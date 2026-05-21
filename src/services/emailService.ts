@@ -7,9 +7,9 @@
 
 // Backend API URL
 // Updated to use your computer's IP address so mobile devices can connect
-// Your computer IP: 192.168.0.120
+// Your computer IP: 
 
-const API_URL = 'http://192.168.0.120:3000/api';
+const API_URL = 'http://https://bdms-production-5878.up.railway.app/api';
 
 export interface EmailServiceResponse {
   success: boolean;

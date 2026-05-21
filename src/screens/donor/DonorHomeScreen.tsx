@@ -117,7 +117,7 @@ export default function DonorHomeScreen() {
     if (!user?.id) return;
     
     try {
-      const response = await fetch(`http://192.168.0.120:3000/api/donor/${user.id}/details`);
+      const response = await fetch(`http://https://bdms-production-5878.up.railway.app/api/donor/${user.id}/details`);
       const data = await response.json();
       
       if (data.success) {
@@ -143,7 +143,7 @@ export default function DonorHomeScreen() {
     
     try {
       setLoadingDonations(true);
-      const response = await fetch(`http://192.168.0.120:3000/api/donor/${user.id}/recent-donations?limit=5`);
+      const response = await fetch(`http://https://bdms-production-5878.up.railway.app/api/donor/${user.id}/recent-donations?limit=5`);
       const data = await response.json();
       
       if (data.success) {

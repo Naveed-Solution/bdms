@@ -85,7 +85,7 @@ const ViewRequests: React.FC = () => {
    */
   const loadRequests = async () => {
     try {
-      const response = await fetch('http://192.168.0.120:3000/api/blood-requests');
+      const response = await fetch('http://https://bdms-production-5878.up.railway.app/api/blood-requests');
       const data = await response.json();
 
       if (data.requests) {
