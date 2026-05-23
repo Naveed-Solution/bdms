@@ -12,8 +12,8 @@
  */
 
 // API Base URL - Update this to match your backend IP
-// Current IP: 10.29.56.23 (verified: Dec 26, 2025)
-export const API_BASE_URL = 'bdms-production-5878.up.railway.app/api';
+// Current IP: 192.168.1.26 (verified: Dec 26, 2025)
+export const API_BASE_URL = 'https://192.168.1.26/api';
 
 /**
  * Generic API request handler with improved error handling

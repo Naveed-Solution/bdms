@@ -25,16 +25,7 @@ export default function DonorHomeScreen() {
   const [availableRequestsCount, setAvailableRequestsCount] = useState(0);
   const [profileStatus, setProfileStatus] = useState<'loading' | 'none' | 'pending' | 'approved' | 'rejected'>('loading');
   const [profileRemarks, setProfileRemarks] = useState<string>('');
-  const [donatedCount, setDonatedCount] = useState(0);
-  
-  const [donorInfo, setDonorInfo] = useState({
-    bloodType: null as string | null,
-    lastDonation: null as string | null,
-    nextEligible: null as string | null,
-    daysUntilEligible: null as number | null,
-    isEligible: false,
-  });
-  
+
   const [recentDonations, setRecentDonations] = useState<Array<{
     date: string;
     location: string;
@@ -50,8 +41,6 @@ export default function DonorHomeScreen() {
    */
   useEffect(() => {
     loadProfileStatus();
-    loadDonorStats();
-    loadDonorDetails();
     loadRecentDonations();
   }, [user]);
 
@@ -99,42 +88,6 @@ export default function DonorHomeScreen() {
   /**
    * Load donor statistics
    */
-  const loadDonorStats = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const stats = await bloodRequestAPI.getDonorStats(user.id);
-      setDonatedCount(stats.donatedCount);
-    } catch (error) {
-      console.error('Error loading donor stats:', error);
-    }
-  };
-
-  /**
-   * Load donor details (blood group, last donation, eligibility)
-   */
-  const loadDonorDetails = async () => {
-    if (!user?.id) return;
-    
-    try {
-      const response = await fetch(`http://https://bdms-production-5878.up.railway.app/api/donor/${user.id}/details`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setDonorInfo({
-          bloodType: data.bloodGroup,
-          lastDonation: data.lastDonation,
-          nextEligible: data.nextEligible,
-          daysUntilEligible: data.daysUntilEligible,
-          isEligible: data.isEligible,
-        });
-        console.log('✅ [Donor] Details loaded:', data);
-      }
-    } catch (error) {
-      console.error('❌ [Donor] Error loading details:', error);
-    }
-  };
-
   /**
    * Load recent donations
    */
@@ -143,7 +96,7 @@ export default function DonorHomeScreen() {
     
     try {
       setLoadingDonations(true);
-      const response = await fetch(`http://https://bdms-production-5878.up.railway.app/api/donor/${user.id}/recent-donations?limit=5`);
+      const response = await fetch(`http://https://192.168.1.26/api/donor/${user.id}/recent-donations?limit=5`);
       const data = await response.json();
       
       if (data.success) {
@@ -177,12 +130,10 @@ export default function DonorHomeScreen() {
    */
   useEffect(() => {
     updateAvailableCount();
-    
+
     // Poll for updates every 1 second
     const interval = setInterval(() => {
       updateAvailableCount();
-      loadDonorStats();
-      loadDonorDetails();
     }, 1000);
     return () => clearInterval(interval);
   }, [user]);
@@ -194,9 +145,7 @@ export default function DonorHomeScreen() {
   useFocusEffect(
     React.useCallback(() => {
       updateAvailableCount();
-      loadDonorStats();
       loadProfileStatus();
-      loadDonorDetails();
       loadRecentDonations();
     }, [user?.id])
   );
@@ -224,8 +173,6 @@ export default function DonorHomeScreen() {
       message: `${feature} feature will be implemented here. This is a placeholder for the full implementation.`,
     });
   };
-
-  const isEligible = donorInfo.isEligible;
 
   return (
     <View style={styles.container}>
@@ -450,65 +397,6 @@ export default function DonorHomeScreen() {
           </View>
         ) : null}
 
-        {/* Donor Profile Card - Modern Design */}
-        {donorInfo.bloodType && (
-          <View style={styles.profileCard}>
-            <View style={styles.profileCardHeader}>
-              <View style={styles.bloodTypeContainer}>
-                <View style={styles.bloodTypeCircle}>
-                  <Text style={styles.bloodTypeText}>{donorInfo.bloodType}</Text>
-                </View>
-                <Text style={styles.bloodTypeLabel}>Blood Type</Text>
-              </View>
-              <View style={styles.profileStatsContainer}>
-                <Text style={styles.profileStatValue}>{donatedCount}</Text>
-                <Text style={styles.profileStatLabel}>Donations</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Eligibility Status - Improved UI */}
-        {donorInfo.bloodType && (
-          <View style={[styles.eligibilityCard, isEligible ? styles.eligibleCard : styles.notEligibleCard]}>
-            <View style={styles.eligibilityHeader}>
-              <View style={[styles.eligibilityIconContainer, {
-                backgroundColor: isEligible ? '#E8F5E9' : '#FFF3E0'
-              }]}>
-                <Ionicons 
-                  name={isEligible ? 'checkmark-circle' : 'time'} 
-                  size={32} 
-                  color={isEligible ? '#4CAF50' : '#FF9800'} 
-                />
-              </View>
-              <View style={styles.eligibilityContent}>
-                <Text style={styles.eligibilityTitle}>
-                  {isEligible ? 'Eligible to Donate!' : 'Not Eligible Yet'}
-                </Text>
-                <Text style={styles.eligibilitySubtitle}>
-                  {isEligible 
-                    ? 'You can donate blood today' 
-                    : donorInfo.lastDonation && donorInfo.nextEligible
-                      ? `Last donated on ${donorInfo.lastDonation}`
-                      : 'Complete your profile to start donating'
-                  }
-                </Text>
-              </View>
-            </View>
-            {!isEligible && donorInfo.daysUntilEligible !== null && donorInfo.daysUntilEligible > 0 && donorInfo.nextEligible && (
-              <View style={styles.eligibilityFooter}>
-                <View style={styles.eligibilityInfoRow}>
-                  <Ionicons name="calendar" size={16} color="#666" />
-                  <Text style={styles.eligibilityInfoLabel}>Next Eligible:</Text>
-                  <Text style={styles.eligibilityInfoValue}>{donorInfo.nextEligible}</Text>
-                </View>
-                <View style={styles.countdownBadge}>
-                  <Text style={styles.countdownText}>{donorInfo.daysUntilEligible} days remaining</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* Quick Actions */}
         <View style={styles.section}>

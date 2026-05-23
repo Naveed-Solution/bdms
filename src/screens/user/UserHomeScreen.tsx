@@ -25,8 +25,6 @@ export default function UserHomeScreen() {
   const { getUserRequests } = useBloodRequest();
   
   const [userRequests, setUserRequests] = useState<any[]>([]);
-  const [nearbyDonors, setNearbyDonors] = useState(0);
-  const [availableDonors, setAvailableDonors] = useState(0);
   const [profileStatus, setProfileStatus] = useState<'loading' | 'none' | 'pending' | 'approved' | 'rejected'>('loading');
   const [profileRemarks, setProfileRemarks] = useState<string>('');
   const [unreadCount, setUnreadCount] = useState(0);
@@ -37,8 +35,6 @@ export default function UserHomeScreen() {
    */
   useEffect(() => {
     loadProfileStatus();
-    loadDonorStats();
-    loadBloodTypeCounts();
   }, [user]);
 
   const loadProfileStatus = async () => {
@@ -59,64 +55,6 @@ export default function UserHomeScreen() {
     }
   };
 
-  /**
-   * Load actual donor statistics
-   */
-  const loadDonorStats = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users`);
-      const data = await response.json();
-      
-      // Count total registered donors
-      const totalDonorsCount = data.users.filter((u: any) => u.role === 'donor').length;
-      
-      // Get donor profiles to check approval status
-      const profilesResponse = await fetch(`${API_BASE_URL}/admin/pending-profiles`);
-      const profilesData = await profilesResponse.json();
-      
-      // Count approved donors only
-      const approvedDonors = profilesData.profiles?.filter((p: any) => 
-        p.type === 'donor' && p.approval_status === 'APPROVED'
-      ).length || 0;
-      
-      setAvailableDonors(approvedDonors);
-      setNearbyDonors(totalDonorsCount);
-      
-      console.log(`✅ Loaded donor stats: ${approvedDonors} available, ${totalDonorsCount} total`);
-    } catch (error) {
-      console.error('❌ Error loading donor stats:', error);
-      // Set to 0 if API fails
-      setAvailableDonors(0);
-      setNearbyDonors(0);
-    }
-  };
-
-  /**
-   * Load actual blood type counts
-   */
-  const loadBloodTypeCounts = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/donors-by-blood-type`);
-      const data = await response.json();
-      
-      // Convert API response to array format for UI
-      const bloodTypeArray = [
-        { type: 'A+', donors: data.bloodTypes['A+'] || 0 },
-        { type: 'A-', donors: data.bloodTypes['A-'] || 0 },
-        { type: 'B+', donors: data.bloodTypes['B+'] || 0 },
-        { type: 'B-', donors: data.bloodTypes['B-'] || 0 },
-        { type: 'O+', donors: data.bloodTypes['O+'] || 0 },
-        { type: 'O-', donors: data.bloodTypes['O-'] || 0 },
-        { type: 'AB+', donors: data.bloodTypes['AB+'] || 0 },
-        { type: 'AB-', donors: data.bloodTypes['AB-'] || 0 },
-      ];
-      
-      setBloodTypes(bloodTypeArray);
-      console.log('✅ Loaded blood type counts:', data.bloodTypes);
-    } catch (error) {
-      console.error('❌ Error loading blood type counts:', error);
-    }
-  };
 
   /**
    * Update user requests
@@ -147,8 +85,6 @@ export default function UserHomeScreen() {
   useFocusEffect(
     React.useCallback(() => {
       loadProfileStatus();
-      loadDonorStats();
-      loadBloodTypeCounts();
       updateUserRequests();
     }, [user?.id])
   );
@@ -161,8 +97,6 @@ export default function UserHomeScreen() {
     const interval = setInterval(() => {
       if (user) {
         loadProfileStatus();
-        loadDonorStats();
-        loadBloodTypeCounts();
         updateUserRequests();
       }
     }, 2000); // 2 seconds for optimal performance
@@ -170,16 +104,6 @@ export default function UserHomeScreen() {
     return () => clearInterval(interval);
   }, [user?.id]);
 
-  const [bloodTypes, setBloodTypes] = useState([
-    { type: 'A+', donors: 0 },
-    { type: 'A-', donors: 0 },
-    { type: 'B+', donors: 0 },
-    { type: 'B-', donors: 0 },
-    { type: 'O+', donors: 0 },
-    { type: 'O-', donors: 0 },
-    { type: 'AB+', donors: 0 },
-    { type: 'AB-', donors: 0 },
-  ]);
 
   const handleLogout = () => {
     showAlert({
@@ -197,15 +121,6 @@ export default function UserHomeScreen() {
     });
   };
 
-  const showFeature = (feature: string) => {
-    showAlert({
-      type: 'info',
-      title: feature,
-      message: `${feature} feature will be implemented here. This is a placeholder for the full implementation.`,
-    });
-  };
-
-  /**
    * Navigate to Create Blood Request screen (only if profile approved)
    */
   const createRequest = () => {
@@ -498,25 +413,6 @@ export default function UserHomeScreen() {
           </View>
         ) : null}
 
-        {/* Summary Stats */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryItem}>
-            <Text style={styles.summaryValue}>
-              {userRequests.filter(r => r.status !== 'COMPLETED' && r.status !== 'CANCELLED').length}
-            </Text>
-            <Text style={styles.summaryLabel}>Active Requests</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>{availableDonors}</Text>
-            <Text style={styles.summaryLabel}>Available Donors</Text>
-          </View>
-          <View style={styles.summaryDivider} />
-          <View style={styles.summaryItem}>
-            <Text style={[styles.summaryValue, { color: '#666' }]}>{nearbyDonors}</Text>
-            <Text style={styles.summaryLabel}>Total Donors</Text>
-          </View>
-        </View>
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -602,26 +498,6 @@ export default function UserHomeScreen() {
           )}
         </View>
 
-        {/* Available Donors by Blood Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Available Donors</Text>
-          <View style={styles.bloodTypeGrid}>
-            {bloodTypes.map((item, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.bloodTypeCard}
-                onPress={() => showAlert({
-                  type: 'info',
-                  title: `Blood Type ${item.type}`,
-                  message: `${item.donors} donors available in your area`,
-                })}
-              >
-                <Text style={styles.bloodTypeLabel}>{item.type}</Text>
-                <Text style={styles.bloodTypeDonors}>{item.donors} donors</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>

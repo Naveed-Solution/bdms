@@ -72,7 +72,7 @@ const UserProfileDetail: React.FC = () => {
   const loadUserDetails = async () => {
     try {
       console.log('📡 Fetching user details for:', userId);
-      const response = await fetch(`http://https://bdms-production-5878.up.railway.app/api/admin/user/${userId}/details`);
+      const response = await fetch(`http://https://192.168.1.26/api/admin/user/${userId}/details`);
       
       console.log('📡 Response status:', response.status);
       const data = await response.json();
@@ -115,7 +115,7 @@ const UserProfileDetail: React.FC = () => {
 
     try {
       const response = await fetch(
-        `http://https://bdms-production-5878.up.railway.app/api/admin/users/${userId}/deactivate`,
+        `http://https://192.168.1.26/api/admin/users/${userId}/deactivate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -157,7 +157,7 @@ const UserProfileDetail: React.FC = () => {
 
     try {
       const response = await fetch(
-        `http://https://bdms-production-5878.up.railway.app/api/admin/users/${userId}/activate`,
+        `http://https://192.168.1.26/api/admin/users/${userId}/activate`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
