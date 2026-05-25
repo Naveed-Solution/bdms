@@ -79,7 +79,7 @@ const ManageUsers: React.FC = () => {
    */
   const loadUsers = async () => {
     try {
-      const response = await fetch('https://bdms-production.up.railway.app/api/users');
+      const response = await fetch('https://bdms-production-5878.up.railway.app/api/users');
       const data = await response.json();
 
       if (data.users) {
@@ -115,7 +115,7 @@ const ManageUsers: React.FC = () => {
    */
   const loadAppealsCount = async () => {
     try {
-      const response = await fetch('https://bdms-production.up.railway.app/api/admin/appeals');
+      const response = await fetch('https://bdms-production-5878.up.railway.app/api/admin/appeals');
       const data = await response.json();
 
       if (data.success && data.appeals) {

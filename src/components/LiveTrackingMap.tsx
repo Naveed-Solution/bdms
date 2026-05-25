@@ -125,7 +125,7 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
    */
   const updateLocationOnServer = async (latitude: number, longitude: number) => {
     try {
-      const API_BASE_URL = 'https://bdms-production.up.railway.app/api';
+      const API_BASE_URL = 'https://bdms-production-5878.up.railway.app/api';
       const response = await fetch(`${API_BASE_URL}/location/update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -151,7 +151,7 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
   const fetchLocations = async () => {
     console.log('📡 [LiveTrackingMap] Fetching locations for request:', requestId);
     try {
-      const API_BASE_URL = 'https://bdms-production.up.railway.app/api';
+      const API_BASE_URL = 'https://bdms-production-5878.up.railway.app/api';
       const response = await fetch(`${API_BASE_URL}/location/${requestId}`);
       const data = await response.json();
       
@@ -363,7 +363,7 @@ const LiveTrackingMap: React.FC<LiveTrackingMapProps> = ({
     }
 
     try {
-      const API_BASE_URL = 'https://bdms-production.up.railway.app/api';
+      const API_BASE_URL = 'https://bdms-production-5878.up.railway.app/api';
       const url = `${API_BASE_URL}/route/${requestId}?donorId=${donorId}`;
       
       console.log('🛣️ [Route] Fetching from backend:', url);

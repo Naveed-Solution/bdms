@@ -96,7 +96,7 @@ export default function DonorHomeScreen() {
     
     try {
       setLoadingDonations(true);
-      const response = await fetch(`https://bdms-production.up.railway.app/api/donor/${user.id}/recent-donations?limit=5`);
+      const response = await fetch(`https://bdms-production-5878.up.railway.app/api/donor/${user.id}/recent-donations?limit=5`);
       const data = await response.json();
       
       if (data.success) {

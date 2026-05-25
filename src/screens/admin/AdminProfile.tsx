@@ -62,7 +62,7 @@ const AdminProfile: React.FC = () => {
 
     try {
       setEmailLoading(true);
-      const response = await fetch('https://bdms-production.up.railway.app/api/send-verification', {
+      const response = await fetch('https://bdms-production-5878.up.railway.app/api/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,7 +111,7 @@ const AdminProfile: React.FC = () => {
       setEmailLoading(true);
       
       // Verify code
-      const verifyResponse = await fetch('https://bdms-production.up.railway.app/api/verify-code', {
+      const verifyResponse = await fetch('https://bdms-production-5878.up.railway.app/api/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,7 +126,7 @@ const AdminProfile: React.FC = () => {
       }
 
       // Update email
-      const updateResponse = await fetch(`https://bdms-production.up.railway.app/api/admin/update-email`, {
+      const updateResponse = await fetch(`https://bdms-production-5878.up.railway.app/api/admin/update-email`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -198,7 +198,7 @@ const AdminProfile: React.FC = () => {
 
     try {
       setPasswordLoading(true);
-      const response = await fetch('https://bdms-production.up.railway.app/api/send-verification', {
+      const response = await fetch('https://bdms-production-5878.up.railway.app/api/send-verification', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +247,7 @@ const AdminProfile: React.FC = () => {
       setPasswordLoading(true);
       
       // Verify code
-      const verifyResponse = await fetch('https://bdms-production.up.railway.app/api/verify-code', {
+      const verifyResponse = await fetch('https://bdms-production-5878.up.railway.app/api/verify-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -262,7 +262,7 @@ const AdminProfile: React.FC = () => {
       }
 
       // Change password
-      const updateResponse = await fetch('https://bdms-production.up.railway.app/api/reset-password', {
+      const updateResponse = await fetch('https://bdms-production-5878.up.railway.app/api/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

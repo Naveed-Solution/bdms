@@ -9,7 +9,7 @@
 // Updated to use your computer's IP address so mobile devices can connect
 // Your computer IP: 
 
-const API_URL = 'https://bdms-production.up.railway.app/api';
+const API_URL = 'https://bdms-production-5878.up.railway.app/api';
 
 export interface EmailServiceResponse {
   success: boolean;

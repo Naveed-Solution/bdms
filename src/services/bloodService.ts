@@ -3,7 +3,7 @@
  * API calls related to blood donations and requests
  */
 
-const BASE_URL = 'https://bdms-production.up.railway.app/api';
+const BASE_URL = 'https://bdms-production-5878.up.railway.app/api';
 
 /**
  * Search for blood donors by blood type
