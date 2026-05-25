@@ -30,5 +30,11 @@
       "expo-font",
       "expo-secure-store"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "aa907995-4a88-4970-866c-405c83b861f1"
+      }
+    },
+    "owner": "naveed75"
   }
 }
