@@ -121,6 +121,7 @@ export default function UserHomeScreen() {
     });
   };
 
+  /**
    * Navigate to Create Blood Request screen (only if profile approved)
    */
   const createRequest = () => {
