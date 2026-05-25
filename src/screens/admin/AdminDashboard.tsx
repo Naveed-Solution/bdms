@@ -69,11 +69,11 @@ export default function AdminDashboard() {
       setIsLoading(true);
 
       // Fetch users
-      const usersResponse = await fetch('http://https://192.168.1.26/api/users');
+      const usersResponse = await fetch('https://bdms-production.up.railway.app/api/users');
       const usersData = await usersResponse.json();
 
       // Fetch blood requests
-      const requestsResponse = await fetch('http://https://192.168.1.26/api/blood-requests');
+      const requestsResponse = await fetch('https://bdms-production.up.railway.app/api/blood-requests');
       const requestsData = await requestsResponse.json();
 
       if (usersData.users && requestsData.requests) {
@@ -116,7 +116,7 @@ export default function AdminDashboard() {
   const loadActivities = async () => {
     try {
       setLoadingActivities(true);
-      const response = await fetch('http://https://192.168.1.26/api/admin/recent-activities?limit=5');
+      const response = await fetch('https://bdms-production.up.railway.app/api/admin/recent-activities?limit=5');
       const data = await response.json();
 
       if (data.success && data.activities) {

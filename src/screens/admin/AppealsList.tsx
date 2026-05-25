@@ -55,7 +55,7 @@ const AppealsList: React.FC = () => {
 
   const loadAppeals = async () => {
     try {
-      const response = await fetch('http://https://192.168.1.26/api/admin/appeals');
+      const response = await fetch('https://bdms-production.up.railway.app/api/admin/appeals');
       const data = await response.json();
 
       if (data.success) {
@@ -105,7 +105,7 @@ const AppealsList: React.FC = () => {
 
     try {
       const response = await fetch(
-        `http://https://192.168.1.26/api/admin/appeals/${selectedAppeal.id}/respond`,
+        `https://bdms-production.up.railway.app/api/admin/appeals/${selectedAppeal.id}/respond`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

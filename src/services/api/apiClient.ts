@@ -15,7 +15,7 @@
 // import axios from 'axios';
 // import { getSecureToken } from '../storage/secureStorage';
 
-const BASE_URL = 'https://api.bdms.example.com/v1';
+const BASE_URL = 'https://bdms-production.up.railway.app/api';
 
 /**
  * API Client class

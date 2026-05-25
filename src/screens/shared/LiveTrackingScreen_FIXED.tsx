@@ -84,7 +84,7 @@ const LiveTrackingScreen: React.FC = () => {
         setIsShareLocationEnabled(true);
       }
       
-      const API_BASE_URL = 'http://https://192.168.1.26/api';
+      const API_BASE_URL = 'https://bdms-production.up.railway.app/api';
       
       // Fetch recipient info
       if (requestData.recipientId) {
@@ -183,7 +183,7 @@ const LiveTrackingScreen: React.FC = () => {
     setIsShareLocationEnabled(newValue);
 
     try {
-      const response = await fetch(`http://https://192.168.1.26/api/blood-requests/${requestId}/share-location`, {
+      const response = await fetch(`https://bdms-production.up.railway.app/api/blood-requests/${requestId}/share-location`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ shareLocation: newValue })
