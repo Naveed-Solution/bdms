@@ -1,5 +1,6 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
 const cors = require('cors');
 const crypto = require('crypto');
 const sqlite3 = require('sqlite3').verbose();
@@ -530,14 +531,7 @@ function initializeDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at DESC)`, () => {});
 }
 
-// Email configuration (CONFIDENTIAL)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  },
-});
+// Email configuration using Resend
 
 // Generate 6-digit verification code
 function generateVerificationCode() {
@@ -648,9 +642,9 @@ app.post('/api/send-verification-code', async (req, res) => {
     `;
 
     // Send email
-    await transporter.sendMail({
-      from: `"Blood Donation Management System" <${process.env.EMAIL_USER}>`,
-      to: email,
+    await resend.emails.send({
+  from: 'BDMS <onboarding@resend.dev>',
+  to: email,
       subject: subject,
       html: htmlContent,
     });
@@ -3190,12 +3184,12 @@ app.post('/api/send-verification', async (req, res) => {
     const subject = purpose === 'email_update' ? 'Email Update Verification Code' : 'Password Change Verification Code';
     const message = `Your verification code is: ${verificationCode}\n\nThis code will expire in 10 minutes.`;
 
-    await transporter.sendMail({
-      from: 'humantraits7@gmail.com',
-      to: email,
-      subject,
-      text: message,
-    });
+    await resend.emails.send({
+  from: 'BDMS <onboarding@resend.dev>',
+  to: [email],
+  subject,
+  html: `<p>${message}</p>`,
+});
 
     console.log(`✅ Verification code sent to ${email} for ${purpose}`);
     res.json({ success: true, message: 'Verification code sent' });
@@ -4293,4 +4287,5 @@ process.on('SIGINT', () => {
     });
   });
 });
+
 
