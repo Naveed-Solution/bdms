@@ -1,14 +1,23 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS
+async function sendEmail(to, subject, htmlContent) {
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': process.env.BREVO_API_KEY
+    },
+    body: JSON.stringify({
+      sender: { name: 'Blood Donation System', email: 'naveedulhaq75@gmail.com' },
+      to: [{ email: to }],
+      subject: subject,
+      htmlContent: htmlContent
+    })
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(JSON.stringify(error));
   }
-});
+}
 const cors = require('cors');
 const crypto = require('crypto');
 const sqlite3 = require('sqlite3').verbose();
@@ -650,12 +659,7 @@ app.post('/api/send-verification-code', async (req, res) => {
     `;
 
     // Send email
-  await transporter.sendMail({
-  from: '"Blood Donation Management System" <ac9b6c001@smtp-brevo.com>',
-  to: email,
-  subject: subject,
-  html: htmlContent
-});
+  await sendEmail(email, subject, htmlContent);
     console.log(`✅ Verification code sent to ${email}: ${code}`);
     res.json({ success: true, message: 'Verification code sent successfully' });
   } catch (error) {
@@ -3191,13 +3195,7 @@ app.post('/api/send-verification', async (req, res) => {
     const subject = purpose === 'email_update' ? 'Email Update Verification Code' : 'Password Change Verification Code';
     const message = `Your verification code is: ${verificationCode}\n\nThis code will expire in 10 minutes.`;
 
-await transporter.sendMail({
-  from: '"Blood Donation Management System" <ac9b6c001@smtp-brevo.com>',
-  to: email,
-  subject,
-  html: `<p>${message}</p>`,
-});
-
+await sendEmail(email, subject, `<p>${message}</p>`);
     console.log(`✅ Verification code sent to ${email} for ${purpose}`);
     res.json({ success: true, message: 'Verification code sent' });
   } catch (error) {
