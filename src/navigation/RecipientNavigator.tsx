@@ -75,8 +75,7 @@ const RecipientNavigator: React.FC = () => {
         name="UserHome"
         component={UserHomeScreen}
         options={{
-          headerTitle: 'Recipient Dashboard',
-          headerLeft: () => null, // No back button on home
+          headerShown: false,
         }}
       />
 

@@ -190,7 +190,7 @@ export default function DonorHomeScreen() {
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>DONOR</Text>
           </View>
-          <Text style={styles.headerTitle}>{user?.name || 'Donor'}</Text>
+          <Text style={styles.headerTitle}>Donor Dashboard</Text>
         </View>
 
         {/* Notification Bell Icon (Right) */}
@@ -218,6 +218,7 @@ export default function DonorHomeScreen() {
             activeOpacity={1}
           />
           <View style={styles.sidebarMenu}>
+            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
             {/* User Profile Header */}
             <View style={styles.menuHeader}>
               <View style={styles.profileCard}>
@@ -331,6 +332,7 @@ export default function DonorHomeScreen() {
             <View style={styles.menuFooter}>
               <Text style={styles.menuFooterText}>BDMS v1.0</Text>
             </View>
+            </ScrollView>
           </View>
         </View>
       )}
@@ -550,12 +552,12 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   roleBadge: {
     backgroundColor: 'rgba(255,255,255,0.3)',
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,

@@ -77,8 +77,7 @@ const DonorNavigator: React.FC = () => {
         name="DonorHome"
         component={DonorHomeScreen}
         options={{
-          headerTitle: 'Donor Dashboard',
-          headerLeft: () => null, // No back button on home
+          headerShown: false,
         }}
       />
 

@@ -207,7 +207,7 @@ export default function UserHomeScreen() {
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>RECIPIENT</Text>
           </View>
-          <Text style={styles.headerTitle}>{user?.name || 'Recipient'}</Text>
+          <Text style={styles.headerTitle}>Recipient Dashboard</Text>
         </View>
 
         {/* Notification Bell Icon (Right) */}
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     paddingHorizontal: 16,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
   },
   roleBadge: {
