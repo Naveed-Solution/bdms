@@ -536,13 +536,13 @@ const CreateBloodRequest: React.FC = () => {
 
       // Navigate to status screen
       navigation.navigate('RequestStatus', { requestId });
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error creating blood request:', error);
-      showAlert(
-        'Request Failed',
-        'Unable to create blood request. Please try again.',
-        'error'
-      );
+      showAlert({
+        type: 'error',
+        title: 'Request Failed',
+        message: error?.message || 'Unable to create blood request. Please try again.',
+      });
     } finally {
       setIsSubmitting(false);
     }
