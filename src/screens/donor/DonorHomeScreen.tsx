@@ -7,7 +7,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
-import { profileAPI, bloodRequestAPI } from '../../services/api';
+import { profileAPI, bloodRequestAPI, API_BASE_URL } from '../../services/api';
 import { getUnreadNotificationCount } from '../../services/notificationService';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DrawerContent, { DrawerMenuItem } from '../../components/layout/DrawerContent';
@@ -100,7 +100,7 @@ export default function DonorHomeScreen() {
     if (!user?.id) return;
     
     try {
-      const response = await fetch(`http://192.10.8.120:3000/api/donor/${user.id}/details`);
+      const response = await fetch(`${API_BASE_URL}/donor/${user.id}/details`);
       const data = await response.json();
       
       if (data.success) {
@@ -124,7 +124,7 @@ export default function DonorHomeScreen() {
     
     try {
       setLoadingDonations(true);
-  const response = await fetch(`http://10.29.64.21:3000/api/donor/${user.id}/recent-donations?limit=5`);
+  const response = await fetch(`${API_BASE_URL}/donor/${user.id}/recent-donations?limit=5`);
       const data = await response.json();
       
       if (data.success) {

@@ -8,6 +8,7 @@ import { useAlert } from '../../context/AlertContext';
 // @ts-ignore - expo/vector-icons types not available in this setup
 import { Ionicons } from '@expo/vector-icons';
 import { getUnreadNotificationCount } from '../../services/notificationService';
+import { API_BASE_URL } from '../../services/api';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import DrawerContent, { DrawerMenuItem } from '../../components/layout/DrawerContent';
 
@@ -60,11 +61,11 @@ export default function AdminDashboard() {
       setIsLoading(true);
 
       // Fetch users
-  const usersResponse = await fetch('http://10.29.64.21:3000/api/users');
+  const usersResponse = await fetch(`${API_BASE_URL}/users`);
       const usersData = await usersResponse.json();
 
       // Fetch blood requests
-  const requestsResponse = await fetch('http://10.29.64.21:3000/api/blood-requests');
+  const requestsResponse = await fetch(`${API_BASE_URL}/blood-requests`);
       const requestsData = await requestsResponse.json();
 
       if (usersData.users && requestsData.requests) {
@@ -107,7 +108,7 @@ export default function AdminDashboard() {
   const loadActivities = async () => {
     try {
       setLoadingActivities(true);
-  const response = await fetch('http://10.29.64.21:3000/api/admin/recent-activities?limit=5');
+  const response = await fetch(`${API_BASE_URL}/admin/recent-activities?limit=5`);
       const data = await response.json();
 
       if (data.success && data.activities) {
