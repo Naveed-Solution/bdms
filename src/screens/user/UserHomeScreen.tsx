@@ -906,12 +906,12 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 8,
     letterSpacing: 0.3,
-    textAlign: \'center\',
+    textAlign: 'center',
   },
   roleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: \'center\',
+    justifyContent: 'center',
     marginBottom: 4,
   },
   roleIndicator: {
@@ -928,7 +928,7 @@ const styles = StyleSheet.create({
   emailContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: \'center\',
+    justifyContent: 'center',
     gap: 4,
   },
   menuUserEmail: {
