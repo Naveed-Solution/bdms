@@ -207,7 +207,7 @@ export default function UserHomeScreen() {
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>RECIPIENT</Text>
           </View>
-          <Text style={styles.headerTitle}>Recipient Dashboard</Text>
+          <Text style={styles.headerTitle}>{user?.name || 'Recipient'}</Text>
         </View>
 
         {/* Notification Bell Icon (Right) */}
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     paddingHorizontal: 16,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
   },
   roleBadge: {
@@ -868,34 +868,43 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   menuHeader: {
-    backgroundColor: '#F8F9FA',
+    padding: 20,
     paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    paddingBottom: 24,
+    backgroundColor: '#fff',
   },
   menuProfileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   menuAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#FFEBEE',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#DC143C',
   },
   menuUserInfo: {
     flex: 1,
   },
   menuUserName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#1A1A1A',
-    marginBottom: 4,
+    marginBottom: 8,
+    letterSpacing: 0.3,
   },
   roleContainer: {
     flexDirection: 'row',

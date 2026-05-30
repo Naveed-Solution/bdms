@@ -190,7 +190,7 @@ export default function DonorHomeScreen() {
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>DONOR</Text>
           </View>
-          <Text style={styles.headerTitle}>Donor Dashboard</Text>
+          <Text style={styles.headerTitle}>{user?.name || 'Donor'}</Text>
         </View>
 
         {/* Notification Bell Icon (Right) */}
@@ -221,7 +221,7 @@ export default function DonorHomeScreen() {
             <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
             {/* User Profile Header */}
             <View style={styles.menuHeader}>
-              <View style={styles.profileCard}>
+              <View style={styles.menuProfileCard}>
                 <View style={styles.menuAvatar}>
                   <Ionicons name="water" size={36} color="#DC143C" />
                 </View>
@@ -552,12 +552,12 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     paddingHorizontal: 16,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
   },
   roleBadge: {
     backgroundColor: 'rgba(255,255,255,0.3)',
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 16,
@@ -1014,7 +1014,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     backgroundColor: '#fff',
   },
-  profileCard: {
+  menuProfileCard: {
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
     padding: 20,
