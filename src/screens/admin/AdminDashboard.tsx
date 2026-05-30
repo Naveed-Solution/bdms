@@ -5,17 +5,14 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
+// @ts-ignore - expo/vector-icons types not available in this setup
 import { Ionicons } from '@expo/vector-icons';
 import { getUnreadNotificationCount } from '../../services/notificationService';
+import DashboardLayout from '../../components/layout/DashboardLayout';
+import DrawerContent, { DrawerMenuItem } from '../../components/layout/DrawerContent';
 
 type NavigationProp = StackNavigationProp<RootStackParamList>;
 
-/**
- * AdminDashboard Screen
- * 
- * Complete admin dashboard with system management features
- * Accessible only to users with role = 'admin'
- */
 export default function AdminDashboard() {
   const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuth();
@@ -38,17 +35,11 @@ export default function AdminDashboard() {
   }>>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
 
-  /**
-   * Load real statistics from backend
-   */
   useEffect(() => {
     loadStats();
     loadActivities();
   }, []);
 
-  /**
-   * Load unread notification count when screen comes into focus
-   */
   useFocusEffect(
     React.useCallback(() => {
       if (user?.id) {
@@ -69,11 +60,11 @@ export default function AdminDashboard() {
       setIsLoading(true);
 
       // Fetch users
-      const usersResponse = await fetch('https://bdms-production-5878.up.railway.app/api/users');
+  const usersResponse = await fetch('http://10.29.64.21:3000/api/users');
       const usersData = await usersResponse.json();
 
       // Fetch blood requests
-      const requestsResponse = await fetch('https://bdms-production-5878.up.railway.app/api/blood-requests');
+  const requestsResponse = await fetch('http://10.29.64.21:3000/api/blood-requests');
       const requestsData = await requestsResponse.json();
 
       if (usersData.users && requestsData.requests) {
@@ -116,7 +107,7 @@ export default function AdminDashboard() {
   const loadActivities = async () => {
     try {
       setLoadingActivities(true);
-      const response = await fetch('https://bdms-production-5878.up.railway.app/api/admin/recent-activities?limit=5');
+  const response = await fetch('http://10.29.64.21:3000/api/admin/recent-activities?limit=5');
       const data = await response.json();
 
       if (data.success && data.activities) {
@@ -146,42 +137,43 @@ export default function AdminDashboard() {
     });
   };
 
+  const menuItems: DrawerMenuItem[] = [
+    {
+      label: 'My Profile',
+      icon: 'person-circle',
+      onPress: () => {
+        setShowMenu(false);
+        navigation.navigate('AdminProfile' as never);
+      },
+    },
+    {
+      label: 'Notifications',
+      icon: 'notifications',
+      onPress: () => {
+        setShowMenu(false);
+        navigation.navigate('Notifications' as never);
+      },
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
+    {
+      label: 'Audit Logs',
+      icon: 'document-text',
+      onPress: () => {
+        setShowMenu(false);
+        navigation.navigate('AdminAuditLogs' as never);
+      },
+    },
+  ];
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        {/* Menu Icon (Left) */}
-        <TouchableOpacity 
-          style={styles.headerIcon}
-          onPress={() => setShowMenu(!showMenu)}
-        >
-          <Ionicons name="menu" size={28} color="#fff" />
-        </TouchableOpacity>
-
-        <View style={styles.headerContent}>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>ADMINISTRATOR</Text>
-          </View>
-          <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        </View>
-
-        {/* Notification Bell Icon (Right) */}
-        <TouchableOpacity 
-          style={styles.headerIcon}
-          onPress={() => navigation.navigate('Notifications' as never)}
-        >
-          <Ionicons name="notifications" size={24} color="#fff" />
-          {unreadCount > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Dropdown Menu */}
+    <DashboardLayout
+      role="admin"
+      title="Admin Dashboard"
+      unreadCount={unreadCount}
+      onMenuPress={() => setShowMenu(!showMenu)}
+      onNotificationPress={() => navigation.navigate('Notifications' as never)}
+    >
+      {/* Drawer Menu Overlay */}
       {showMenu && (
         <View style={styles.menuOverlay}>
           <TouchableOpacity 
@@ -190,95 +182,17 @@ export default function AdminDashboard() {
             activeOpacity={1}
           />
           <View style={styles.sidebarMenu}>
-            {/* Enhanced User Profile Header */}
-            <View style={styles.menuHeader}>
-              <View style={styles.profileCard}>
-                <View style={styles.menuAvatar}>
-                  <Ionicons name="shield-checkmark" size={36} color="#DC143C" />
-                </View>
-                <View style={styles.menuUserInfo}>
-                  <Text style={styles.menuUserName}>{user?.name}</Text>
-                  <View style={styles.roleContainer}>
-                    <View style={styles.roleIndicator} />
-                    <Text style={styles.menuUserRole}>System Administrator</Text>
-                  </View>
-                  <View style={styles.emailContainer}>
-                    <Ionicons name="mail" size={12} color="#999" />
-                    <Text style={styles.menuUserEmail}>{user?.email}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.menuDivider} />
-
-            {/* Menu Items */}
-            <View style={styles.menuSection}>
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('AdminProfile' as never);
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="person-circle" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>My Profile</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('Notifications' as never);
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="notifications" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>Notifications</Text>
-                {unreadCount > 0 && (
-                  <View style={styles.menuBadge}>
-                    <Text style={styles.menuBadgeText}>{unreadCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('AdminAuditLogs' as never);
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="document-text" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>Audit Logs</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.menuDivider} />
-
-            {/* Logout Section */}
-            <TouchableOpacity 
-              style={[styles.menuItem, styles.menuItemDanger]}
-              onPress={() => {
+            <DrawerContent
+              role="admin"
+              userName={user?.name || 'Admin'}
+              userEmail={user?.email || ''}
+              profileStatus="approved"
+              menuItems={menuItems}
+              onLogout={() => {
                 setShowMenu(false);
                 handleLogout();
               }}
-            >
-              <View style={styles.menuItemIcon}>
-                <Ionicons name="log-out" size={22} color="#DC143C" />
-              </View>
-              <Text style={[styles.menuItemText, styles.menuItemTextDanger]}>Logout</Text>
-            </TouchableOpacity>
-
-            {/* Footer */}
-            <View style={styles.menuFooter}>
-              <Text style={styles.menuFooterText}>BDMS v1.0</Text>
-            </View>
+            />
           </View>
         </View>
       )}
@@ -400,7 +314,7 @@ export default function AdminDashboard() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+      </DashboardLayout>
   );
 }
 
@@ -408,88 +322,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8F9FA',
-  },
-  header: {
-    backgroundColor: '#C81E1E',
-    paddingTop: 50,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  headerContent: {
-    flex: 1,
-  },
-  roleBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  roleBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
-  headerTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: '#fff',
-    opacity: 0.95,
-    fontWeight: '500',
-  },
-  headerLogout: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  headerLogoutText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  headerIcon: {
-    padding: 8,
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#FF5722',
-    borderRadius: 12,
-    minWidth: 22,
-    height: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    borderWidth: 2,
-    borderColor: '#C81E1E',
-  },
-  notificationBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
   },
   menuOverlay: {
     position: 'absolute',
@@ -519,147 +351,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 15,
-  },
-  menuHeader: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: '#fff',
-  },
-  profileCard: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  menuAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFEBEE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 3,
-    borderColor: '#DC143C',
-  },
-  menuUserInfo: {
-    marginTop: 0,
-  },
-  menuUserName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
-  },
-  roleIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4CAF50',
-  },
-  menuUserRole: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  emailContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  menuUserEmail: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '500',
-  },
-  menuSection: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 14,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  menuItemIcon: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: '#1A1A1A',
-    flex: 1,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  menuFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: '#FAFAFA',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    alignItems: 'center',
-  },
-  menuFooterText: {
-    fontSize: 11,
-    color: '#999',
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  menuBadge: {
-    backgroundColor: '#DC143C',
-    borderRadius: 12,
-    minWidth: 22,
-    height: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  menuBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 12,
-    marginHorizontal: 12,
-  },
-  menuItemDanger: {
-    backgroundColor: '#FFF5F5',
-    borderWidth: 1,
-    borderColor: '#FFE5E5',
-  },
-  menuItemTextDanger: {
-    color: '#DC143C',
-    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -779,9 +470,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
-  actionIconText: {
-    fontSize: 26,
-  },
   actionContent: {
     flex: 1,
   },
@@ -797,11 +485,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
     lineHeight: 18,
-  },
-  actionArrow: {
-    fontSize: 28,
-    color: '#D0D0D0',
-    marginLeft: 10,
   },
   activityCard: {
     backgroundColor: '#fff',

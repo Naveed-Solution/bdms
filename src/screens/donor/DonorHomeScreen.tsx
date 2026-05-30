@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+// @ts-ignore - expo/vector-icons types not available in this setup
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -8,15 +9,11 @@ import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { profileAPI, bloodRequestAPI } from '../../services/api';
 import { getUnreadNotificationCount } from '../../services/notificationService';
+import DashboardLayout from '../../components/layout/DashboardLayout';
+import DrawerContent, { DrawerMenuItem } from '../../components/layout/DrawerContent';
 
 type NavigationProp = StackNavigationProp<RootStackParamList, 'DonorHome'>;
 
-/**
- * DonorHomeScreen
- * 
- * Complete donor dashboard with donation tracking
- * Accessible only to users with role = 'donor'
- */
 export default function DonorHomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuth();
@@ -25,7 +22,16 @@ export default function DonorHomeScreen() {
   const [availableRequestsCount, setAvailableRequestsCount] = useState(0);
   const [profileStatus, setProfileStatus] = useState<'loading' | 'none' | 'pending' | 'approved' | 'rejected'>('loading');
   const [profileRemarks, setProfileRemarks] = useState<string>('');
-
+  const [donatedCount, setDonatedCount] = useState(0);
+  
+  const [donorInfo, setDonorInfo] = useState({
+    bloodType: null as string | null,
+    lastDonation: null as string | null,
+    nextEligible: null as string | null,
+    daysUntilEligible: null as number | null,
+    isEligible: false,
+  });
+  
   const [recentDonations, setRecentDonations] = useState<Array<{
     date: string;
     location: string;
@@ -36,17 +42,13 @@ export default function DonorHomeScreen() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
   
-  /**
-   * Load donor profile status
-   */
   useEffect(() => {
     loadProfileStatus();
+    loadDonorStats();
+    loadDonorDetails();
     loadRecentDonations();
   }, [user]);
 
-  /**
-   * Load unread notification count when screen comes into focus
-   */
   useFocusEffect(
     React.useCallback(() => {
       if (user?.id) {
@@ -70,11 +72,9 @@ export default function DonorHomeScreen() {
       console.log('📋 [Profile Status] Response:', response);
       
       if (response.success && response.profile) {
-        const status = response.profile.approval_status || response.profile.approvalStatus;
-        console.log('✅ [Profile Status] Current status:', status);
-        
-        setProfileStatus(status.toLowerCase());
-        setProfileRemarks(response.profile.admin_remarks || response.profile.adminRemarks || '');
+        const status = response.profile.approvalStatus || 'none';
+        setProfileStatus(status.toLowerCase() as any);
+        setProfileRemarks(response.profile.adminRemarks || '');
       } else {
         console.log('⚠️ [Profile Status] No profile found');
         setProfileStatus('none');
@@ -85,18 +85,46 @@ export default function DonorHomeScreen() {
     }
   };
 
-  /**
-   * Load donor statistics
-   */
-  /**
-   * Load recent donations
-   */
+  const loadDonorStats = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const stats = await bloodRequestAPI.getDonorStats(user.id);
+      setDonatedCount(stats.donatedCount);
+    } catch (error) {
+      console.error('Error loading donor stats:', error);
+    }
+  };
+
+  const loadDonorDetails = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch(`http://192.10.8.120:3000/api/donor/${user.id}/details`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setDonorInfo({
+          bloodType: data.bloodGroup,
+          lastDonation: data.lastDonation,
+          nextEligible: data.nextEligible,
+          daysUntilEligible: data.daysUntilEligible,
+          isEligible: data.isEligible,
+        });
+        console.log('✅ [Donor] Details loaded:', data);
+      }
+    } catch (error) {
+      console.error('❌ [Donor] Error loading details:', error);
+    }
+  };
+
+
   const loadRecentDonations = async () => {
     if (!user?.id) return;
     
     try {
       setLoadingDonations(true);
-      const response = await fetch(`https://bdms-production-5878.up.railway.app/api/donor/${user.id}/recent-donations?limit=5`);
+  const response = await fetch(`http://10.29.64.21:3000/api/donor/${user.id}/recent-donations?limit=5`);
       const data = await response.json();
       
       if (data.success) {
@@ -110,9 +138,7 @@ export default function DonorHomeScreen() {
     }
   };
 
-  /**
-   * Load available requests count
-   */
+
   const updateAvailableCount = async () => {
     if (!user?.id) return;
     
@@ -125,27 +151,25 @@ export default function DonorHomeScreen() {
     }
   };
 
-  /**
-   * Polling effect for real-time updates (1 second)
-   */
+
   useEffect(() => {
     updateAvailableCount();
-
-    // Poll for updates every 1 second
+    
     const interval = setInterval(() => {
       updateAvailableCount();
+      loadDonorStats();
+      loadDonorDetails();
     }, 1000);
     return () => clearInterval(interval);
   }, [user]);
 
-  /**
-   * Reload data when screen comes into focus
-   * Ensures real-time updates after accepting/declining or creating requests
-   */
+
   useFocusEffect(
     React.useCallback(() => {
       updateAvailableCount();
+      loadDonorStats();
       loadProfileStatus();
+      loadDonorDetails();
       loadRecentDonations();
     }, [user?.id])
   );
@@ -174,170 +198,90 @@ export default function DonorHomeScreen() {
     });
   };
 
+  const formatDate = (date: string) => {
+    try {
+      return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch (e) {
+      return date;
+    }
+  };
+
+  const isEligible = donorInfo.isEligible;
+
+  const menuItems: DrawerMenuItem[] = [
+    {
+      label: 'My Profile',
+      icon: 'person-circle',
+      onPress: () => {
+        setShowMenu(false);
+        navigation.navigate('DonorProfileForm');
+      },
+    },
+    {
+      label: 'Notifications',
+      icon: 'notifications',
+      onPress: () => {
+        setShowMenu(false);
+        navigation.navigate('Notifications' as never);
+      },
+      badge: unreadCount > 0 ? unreadCount : undefined,
+    },
+    {
+      label: 'Donation History',
+      icon: 'document-text',
+      onPress: () => {
+        setShowMenu(false);
+        // @ts-ignore - RequestHistory not in DonorStack type definition
+        navigation.navigate('RequestHistory');
+      },
+    },
+    {
+      label: 'Change Password',
+      icon: 'lock-closed',
+      onPress: () => {
+        setShowMenu(false);
+        navigation.navigate('DonorProfile' as never);
+      },
+    },
+  ];
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        {/* Menu Icon (Left) */}
-        <TouchableOpacity 
-          style={styles.headerIcon}
-          onPress={() => setShowMenu(!showMenu)}
-        >
-          <Ionicons name="menu" size={28} color="#fff" />
-        </TouchableOpacity>
-
-        <View style={styles.headerContent}>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>DONOR</Text>
-          </View>
-          <Text style={styles.headerTitle}>{user?.name || 'Donor'}</Text>
-        </View>
-
-        {/* Notification Bell Icon (Right) */}
-        <TouchableOpacity 
-          style={styles.headerIcon}
-          onPress={() => navigation.navigate('Notifications' as never)}
-        >
-          <Ionicons name="notifications" size={24} color="#fff" />
-          {unreadCount > 0 && (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Professional Sidebar Menu */}
-      {showMenu && (
-        <View style={styles.menuOverlay}>
-          <TouchableOpacity 
-            style={styles.menuBackdrop}
-            onPress={() => setShowMenu(false)}
-            activeOpacity={1}
-          />
-          <View style={styles.sidebarMenu}>
-            <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
-            {/* User Profile Header */}
-            <View style={styles.menuHeader}>
-              <View style={styles.menuProfileCard}>
-                <View style={styles.menuAvatar}>
-                  <Ionicons name="water" size={36} color="#DC143C" />
-                </View>
-                <View style={styles.menuUserInfo}>
-                  <Text style={styles.menuUserName}>{user?.name}</Text>
-                  <View style={styles.roleContainer}>
-                    <View style={[styles.roleIndicator, { 
-                      backgroundColor: profileStatus === 'approved' ? '#4CAF50' : 
-                                      profileStatus === 'pending' ? '#FF9800' :
-                                      profileStatus === 'rejected' ? '#F44336' : '#999'
-                    }]} />
-                    <Text style={styles.menuUserRole}>
-                      {profileStatus === 'approved' ? 'Approved Donor' :
-                       profileStatus === 'pending' ? 'Pending Approval' :
-                       profileStatus === 'rejected' ? 'Profile Rejected' :
-                       'Donor'}
-                    </Text>
-                  </View>
-                  {user?.email && (
-                    <View style={styles.emailContainer}>
-                      <Ionicons name="mail" size={12} color="#999" />
-                      <Text style={styles.menuUserEmail}>{user.email}</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.menuDivider} />
-
-            {/* Menu Items */}
-            <View style={styles.menuSection}>
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('DonorProfileForm');
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="person-circle" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>My Profile</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('Notifications' as never);
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="notifications" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>Notifications</Text>
-                {unreadCount > 0 && (
-                  <View style={styles.menuBadge}>
-                    <Text style={styles.menuBadgeText}>{unreadCount}</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('RequestHistory');
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="document-text" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>Donation History</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowMenu(false);
-                  navigation.navigate('DonorProfile' as never);
-                }}
-              >
-                <View style={styles.menuItemIcon}>
-                  <Ionicons name="lock-closed" size={22} color="#1A1A1A" />
-                </View>
-                <Text style={styles.menuItemText}>Change Password</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.menuDivider} />
-
-            {/* Logout Section */}
+    <DashboardLayout
+        role="donor"
+        title="Donor Dashboard"
+        unreadCount={unreadCount}
+        onMenuPress={() => setShowMenu(!showMenu)}
+        onNotificationPress={() => navigation.navigate('Notifications' as never)}
+      >
+        {/* Drawer Menu Overlay */}
+        {showMenu && (
+          <View style={styles.menuOverlay}>
             <TouchableOpacity 
-              style={[styles.menuItem, styles.menuItemDanger]}
-              onPress={() => {
-                setShowMenu(false);
-                handleLogout();
-              }}
-            >
-              <View style={styles.menuItemIcon}>
-                <Ionicons name="log-out" size={22} color="#DC143C" />
-              </View>
-              <Text style={[styles.menuItemText, styles.menuItemTextDanger]}>Logout</Text>
-            </TouchableOpacity>
-
-            {/* Footer */}
-            <View style={styles.menuFooter}>
-              <Text style={styles.menuFooterText}>BDMS v1.0</Text>
+              style={styles.menuBackdrop}
+              onPress={() => setShowMenu(false)}
+              activeOpacity={1}
+            />
+            <View style={styles.sidebarMenu}>
+              <DrawerContent
+                role="donor"
+                userName={user?.name || 'Donor'}
+                userEmail={user?.email || ''}
+                profileStatus={profileStatus as 'approved' | 'pending' | 'rejected' | 'none' | 'loading'}
+                menuItems={menuItems}
+                onLogout={() => {
+                  setShowMenu(false);
+                  handleLogout();
+                }}
+              />
             </View>
-            </ScrollView>
           </View>
-        </View>
-      )}
+        )}
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* Profile Status Card */}
         {profileStatus === 'loading' ? (
           <View style={styles.profileStatusCard}>
@@ -399,6 +343,65 @@ export default function DonorHomeScreen() {
           </View>
         ) : null}
 
+        {/* Donor Profile Card - Modern Design */}
+        {donorInfo.bloodType && (
+          <View style={styles.profileCard}>
+            <View style={styles.profileCardHeader}>
+              <View style={styles.bloodTypeContainer}>
+                <View style={styles.bloodTypeCircle}>
+                  <Text style={styles.bloodTypeText}>{donorInfo.bloodType}</Text>
+                </View>
+                <Text style={styles.bloodTypeLabel}>Blood Type</Text>
+              </View>
+              <View style={styles.profileStatsContainer}>
+                <Text style={styles.profileStatValue}>{donatedCount}</Text>
+                <Text style={styles.profileStatLabel}>Donations</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Eligibility Status - Improved UI */}
+        {donorInfo.bloodType && (
+          <View style={[styles.eligibilityCard, isEligible ? styles.eligibleCard : styles.notEligibleCard]}>
+            <View style={styles.eligibilityHeader}>
+              <View style={[styles.eligibilityIconContainer, {
+                backgroundColor: isEligible ? '#E8F5E9' : '#FFF3E0'
+              }]}>
+                <Ionicons 
+                  name={isEligible ? 'checkmark-circle' : 'time'} 
+                  size={32} 
+                  color={isEligible ? '#4CAF50' : '#FF9800'} 
+                />
+              </View>
+              <View style={styles.eligibilityContent}>
+                <Text style={styles.eligibilityTitle}>
+                  {isEligible ? 'Eligible to Donate!' : 'Not Eligible Yet'}
+                </Text>
+                <Text style={styles.eligibilitySubtitle}>
+                  {isEligible 
+                    ? 'You can donate blood today' 
+                    : donorInfo.lastDonation && donorInfo.nextEligible
+                      ? `Last donated on ${donorInfo.lastDonation}`
+                      : 'Complete your profile to start donating'
+                  }
+                </Text>
+              </View>
+            </View>
+            {!isEligible && donorInfo.daysUntilEligible !== null && donorInfo.daysUntilEligible > 0 && donorInfo.nextEligible && (
+              <View style={styles.eligibilityFooter}>
+                <View style={styles.eligibilityInfoRow}>
+                  <Ionicons name="calendar" size={16} color="#666" />
+                  <Text style={styles.eligibilityInfoLabel}>Next Eligible:</Text>
+                  <Text style={styles.eligibilityInfoValue}>{donorInfo.nextEligible}</Text>
+                </View>
+                <View style={styles.countdownBadge}>
+                  <Text style={styles.countdownText}>{donorInfo.daysUntilEligible} days remaining</Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.section}>
@@ -431,7 +434,10 @@ export default function DonorHomeScreen() {
           
           <TouchableOpacity 
             style={styles.actionCard}
-            onPress={() => navigation.navigate('RequestHistory')}
+            onPress={() => {
+              // @ts-ignore - RequestHistory not in DonorStack type definition
+              navigation.navigate('RequestHistory');
+            }}
           >
             <View style={[styles.actionIcon, { backgroundColor: '#F3E5F5' }]}>
               <Text style={styles.actionIconText}>📋</Text>
@@ -498,7 +504,7 @@ export default function DonorHomeScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </DashboardLayout>
   );
 }
 
@@ -507,91 +513,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#C81E1E',
-    paddingTop: 50,
-    paddingBottom: 24,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  headerIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  notificationBadge: {
+  menuOverlay: {
     position: 'absolute',
-    top: -2,
-    right: -2,
-    backgroundColor: '#FF5722',
-    borderRadius: 12,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: '#fff',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
   },
-  notificationBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
+  menuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  headerContent: {
-    flex: 1,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  roleBadge: {
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignSelf: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  roleBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 1.5,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.9,
-  },
-  headerLogout: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  headerLogoutText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+  sidebarMenu: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 280,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 4, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 15,
   },
   scrollView: {
     flex: 1,
@@ -705,16 +654,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  profileStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    justifyContent: 'center',
-  },
-  profileStatItem: {
-    alignItems: 'center',
-    paddingHorizontal: 30,
-  },
   profileStatValue: {
     fontSize: 40,
     fontWeight: '800',
@@ -727,11 +666,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#666',
     letterSpacing: 0.3,
-  },
-  profileStatDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#e0e0e0',
   },
   eligibilityCard: {
     borderRadius: 16,
@@ -763,10 +697,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
-  },
-  eligibilityIcon: {
-    fontSize: 32,
-    marginRight: 15,
   },
   eligibilityContent: {
     flex: 1,
@@ -978,174 +908,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     textAlign: 'center',
-  },
-  menuOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-  },
-  menuBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  sidebarMenu: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: 280,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 15,
-  },
-  menuHeader: {
-    padding: 20,
-    paddingTop: 60,
-    paddingBottom: 24,
-    backgroundColor: '#fff',
-  },
-  menuProfileCard: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F0F0F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  menuAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFEBEE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 3,
-    borderColor: '#DC143C',
-  },
-  menuUserInfo: {
-    marginTop: 0,
-  },
-  menuUserName: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A1A1A',
-    marginBottom: 8,
-    letterSpacing: 0.3,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
-  },
-  roleIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  menuUserRole: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  emailContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  menuUserEmail: {
-    fontSize: 12,
-    color: '#999',
-    fontWeight: '500',
-  },
-  menuSection: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 14,
-    borderRadius: 12,
-    marginBottom: 4,
-  },
-  menuItemIcon: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: '#1A1A1A',
-    flex: 1,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  menuBadge: {
-    backgroundColor: '#DC143C',
-    borderRadius: 12,
-    minWidth: 22,
-    height: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  menuBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#F0F0F0',
-    marginVertical: 12,
-    marginHorizontal: 12,
-  },
-  menuItemDanger: {
-    backgroundColor: '#FFF5F5',
-    borderWidth: 1,
-    borderColor: '#FFE5E5',
-  },
-  menuItemTextDanger: {
-    color: '#DC143C',
-    fontWeight: '700',
-  },
-  menuFooter: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: '#FAFAFA',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    alignItems: 'center',
-  },
-  menuFooterText: {
-    fontSize: 11,
-    color: '#999',
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
   },
 });
