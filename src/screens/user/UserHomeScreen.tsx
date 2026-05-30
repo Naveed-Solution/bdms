@@ -877,7 +877,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#F0F0F0',
     shadowColor: '#000',
@@ -906,7 +905,6 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 8,
     letterSpacing: 0.3,
-    textAlign: 'center',
   },
   roleContainer: {
     flexDirection: 'row',
