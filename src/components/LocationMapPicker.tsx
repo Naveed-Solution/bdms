@@ -192,25 +192,15 @@ const LocationMapPicker: React.FC<LocationMapPickerProps> = ({
             showsMyLocationButton={true}
           >
             {/* CartoDB Voyager tiles - More app-friendly than direct OSM */}
-            <UrlTile
-              urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
-              maximumZ={19}
-              flipY={false}
-            />
+            
 
             {/* Draggable Marker */}
             <Marker
-              coordinate={selectedLocation}
-              draggable
-              onDragEnd={handleMarkerDragEnd}
-              pinColor="#DC143C"
-            >
-              <View style={styles.customMarker}>
-                <View style={styles.markerDot}>
-                  <Ionicons name="location" size={40} color="#DC143C" />
-                </View>
-              </View>
-            </Marker>
+  coordinate={selectedLocation}
+  draggable
+  onDragEnd={handleMarkerDragEnd}
+  pinColor="#DC143C"
+/>
           </MapView>
         </View>
 
