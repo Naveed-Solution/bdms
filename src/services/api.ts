@@ -37,8 +37,9 @@ async function apiRequest<T>(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
-    }
+  console.log('❌ SERVER ERROR:', data);
+  throw new Error(data.error || `HTTP error! status: ${response.status}`);
+}
 
     return data;
   } catch (error: any) {
