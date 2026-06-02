@@ -49,16 +49,14 @@ export interface BloodRequest {
   notes?: string;
   status: RequestStatus;
   recipientMobile?: string;
-
+  createdAt: Date;
+  updatedAt: Date;
+  acceptedBy?: AcceptedDonor[];
+  declinedBy?: string[];
+  // Location sharing fields
   shareLocation?: boolean;
   recipientLatitude?: number;
   recipientLongitude?: number;
-
-  createdAt: Date;
-  updatedAt: Date;
-
-  acceptedBy?: AcceptedDonor[];
-  declinedBy?: string[];
 }
 
 /**
@@ -119,41 +117,24 @@ export const BloodRequestProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const convertAPIRequest = (apiRequest: any): BloodRequest => {
     // Handle both snake_case (from backend) and camelCase (from frontend)
     return {
-  id: apiRequest.id,
-  recipientId: apiRequest.recipient_id || apiRequest.recipientId,
-  recipientName: apiRequest.recipient_name || apiRequest.recipientName,
-  bloodGroup: apiRequest.blood_group || apiRequest.bloodGroup,
-  units: apiRequest.units || 1,
-  acceptedUnits: apiRequest.accepted_units || apiRequest.acceptedUnits || 0,
-  urgencyLevel: apiRequest.urgency_level || apiRequest.urgencyLevel,
-  location: apiRequest.location,
-  notes: apiRequest.notes,
-  status: apiRequest.status,
-  recipientMobile: apiRequest.recipient_mobile || apiRequest.recipientMobile,
-
-  shareLocation:
-    apiRequest.share_location ??
-    apiRequest.shareLocation,
-
-  recipientLatitude:
-    apiRequest.recipient_latitude ??
-    apiRequest.recipientLatitude,
-
-  recipientLongitude:
-    apiRequest.recipient_longitude ??
-    apiRequest.recipientLongitude,
-
-  createdAt: new Date(
-    apiRequest.created_at
-      ? apiRequest.created_at * 1000
-      : apiRequest.createdAt
-  ),
-
-  updatedAt: new Date(
-    apiRequest.updated_at
-      ? apiRequest.updated_at * 1000
-      : apiRequest.updatedAt
-  ),
+      id: apiRequest.id,
+      recipientId: apiRequest.recipient_id || apiRequest.recipientId,
+      recipientName: apiRequest.recipient_name || apiRequest.recipientName,
+      bloodGroup: apiRequest.blood_group || apiRequest.bloodGroup,
+      units: apiRequest.units || 1,
+      acceptedUnits: apiRequest.accepted_units || apiRequest.acceptedUnits || 0,
+      urgencyLevel: apiRequest.urgency_level || apiRequest.urgencyLevel,
+      location: apiRequest.location,
+      notes: apiRequest.notes,
+      status: apiRequest.status,
+      recipientMobile: apiRequest.recipient_mobile || apiRequest.recipientMobile,
+      createdAt: new Date(apiRequest.created_at ? apiRequest.created_at * 1000 : apiRequest.createdAt),
+      updatedAt: new Date(apiRequest.updated_at ? apiRequest.updated_at * 1000 : apiRequest.updatedAt),
+      acceptedBy: apiRequest.acceptedBy?.map((d: any) => ({
+        donorId: d.donor_id || d.donorId,
+        donorName: d.donor_name || d.donorName,
+        acceptedAt: new Date(d.accepted_at ? d.accepted_at * 1000 : d.acceptedAt),
+      })),
       declinedBy: apiRequest.declinedBy,
     };
   };
@@ -215,19 +196,6 @@ export const BloodRequestProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       console.log('✅ Creating blood request:', requestId);
-
-console.log('🚀 FINAL PAYLOAD', {
-  id: requestId,
-  recipientId: request.recipientId,
-  recipientName: request.recipientName,
-  bloodGroup: request.bloodGroup,
-  units: request.units,
-  urgencyLevel: request.urgencyLevel,
-  location: request.location,
-  shareLocation: request.shareLocation,
-  recipientLatitude: request.recipientLatitude,
-  recipientLongitude: request.recipientLongitude,
-});
 
       const response = await bloodRequestAPI.create({
         id: requestId,

@@ -1,17 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
-import MapView, { Marker, UrlTile, Region } from 'react-native-maps';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  Platform,
+  SafeAreaView,
+} from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 
 /**
- * ✅ OSM-BASED MAP PICKER
- * 
- * Allows users to select exact location by:
- * 1. Searching and selecting from suggestions (handled by parent)
- * 2. Dragging the pin on the map to precise location
- * 3. Reverse geocoding to get address when pin is moved
- * 
- * Uses Nominatim reverse geocoding (FREE, no API key)
+ * LocationMapPicker
+ *
+ * Uses Leaflet.js inside a WebView — no native map module required.
+ * Works in Expo Go with zero native build steps.
+ * User can tap or drag the pin to choose a location.
  */
 
 interface LocationMapPickerProps {
@@ -29,368 +35,263 @@ interface LocationMapPickerProps {
 const LocationMapPicker: React.FC<LocationMapPickerProps> = ({
   visible,
   onClose,
-  initialLatitude = 30.3753, // Default: Pakistan center
-  initialLongitude = 69.3451,
+  initialLatitude  = 34.0151,   // Default: Peshawar
+  initialLongitude = 71.5249,
   onLocationSelected,
 }) => {
-  const mapRef = useRef<MapView>(null);
-  const [selectedLocation, setSelectedLocation] = useState({
-    latitude: initialLatitude,
-    longitude: initialLongitude,
-  });
-  const [address, setAddress] = useState<string>('');
-  const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
-  const reverseGeocodeTimeout = useRef<NodeJS.Timeout | null>(null);
+  const webViewRef = useRef<WebView>(null);
+  const [address, setAddress] = useState('');
+  const [coords, setCoords]   = useState({ latitude: initialLatitude, longitude: initialLongitude });
+  const [isLoading, setIsLoading]       = useState(true);
+  const [isGeocoding, setIsGeocoding]   = useState(false);
+  const geocodeTimer = useRef<NodeJS.Timeout | null>(null);
 
-  /**
-   * Reverse geocode coordinates to address
-   * Debounced to avoid spamming API while dragging
-   */
-  const reverseGeocode = async (latitude: number, longitude: number) => {
+  // Reset when modal opens with new initial coords
+  useEffect(() => {
+    if (visible) {
+      setCoords({ latitude: initialLatitude, longitude: initialLongitude });
+      setAddress('');
+      setIsLoading(true);
+      reverseGeocode(initialLatitude, initialLongitude);
+    }
+  }, [visible, initialLatitude, initialLongitude]);
+
+  const reverseGeocode = async (lat: number, lon: number) => {
+    setIsGeocoding(true);
     try {
-      setIsReverseGeocoding(true);
-      
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
-      
-      console.log('🔄 [Reverse Geocode] Getting address for:', latitude, longitude);
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'BDMS-BloodDonationApp/1.0',
-        },
-      });
-
-      const data = await response.json();
-
-      if (data && data.address) {
-        const addr = data.address;
-        const addressParts = [
-          addr.amenity || addr.building || addr.house_number,
-          addr.road || addr.street,
-          addr.suburb || addr.neighbourhood,
-          addr.city || addr.town || addr.village,
-          addr.state,
-          'Pakistan'
+      const res  = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`,
+        { headers: { 'User-Agent': 'BDMS-App/1.0' } }
+      );
+      const data = await res.json();
+      if (data?.address) {
+        const a = data.address;
+        const parts = [
+          a.amenity || a.building,
+          a.road || a.street,
+          a.suburb || a.neighbourhood,
+          a.city || a.town || a.village,
+          a.state,
         ].filter(Boolean);
-
-        const formattedAddress = addressParts.join(', ') || data.display_name;
-        setAddress(formattedAddress);
-        console.log('✅ [Reverse Geocode] Address:', formattedAddress);
+        setAddress(parts.join(', ') || data.display_name);
       } else {
-        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        setAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
       }
-    } catch (error) {
-      console.error('❌ [Reverse Geocode] Error:', error);
-      setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+    } catch (_) {
+      setAddress(`${lat.toFixed(5)}, ${lon.toFixed(5)}`);
     } finally {
-      setIsReverseGeocoding(false);
+      setIsGeocoding(false);
     }
   };
 
-  /**
-   * Handle marker drag end
-   * Debounced reverse geocoding to avoid API spam
-   */
-  const handleMarkerDragEnd = (e: any) => {
-    const { latitude, longitude } = e.nativeEvent.coordinate;
-    console.log('📍 [Map Picker] Pin moved to:', latitude, longitude);
-    
-    setSelectedLocation({ latitude, longitude });
-
-    // Clear previous timeout
-    if (reverseGeocodeTimeout.current) {
-      clearTimeout(reverseGeocodeTimeout.current);
-    }
-
-    // Debounce reverse geocoding (wait 800ms after dragging stops)
-    reverseGeocodeTimeout.current = setTimeout(() => {
-      reverseGeocode(latitude, longitude);
-    }, 800);
+  // Message from WebView when user taps/drags pin
+  const handleWebMessage = (event: any) => {
+    try {
+      const msg = JSON.parse(event.nativeEvent.data);
+      if (msg.type === 'pin_moved') {
+        const { lat, lng } = msg;
+        setCoords({ latitude: lat, longitude: lng });
+        if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+        geocodeTimer.current = setTimeout(() => reverseGeocode(lat, lng), 600);
+      }
+    } catch (_) {}
   };
 
-  /**
-   * Handle map press (tap to place pin)
-   */
-  const handleMapPress = (e: any) => {
-    const { latitude, longitude } = e.nativeEvent.coordinate;
-    console.log('📍 [Map Picker] Map tapped at:', latitude, longitude);
-    
-    setSelectedLocation({ latitude, longitude });
-
-    // Clear previous timeout
-    if (reverseGeocodeTimeout.current) {
-      clearTimeout(reverseGeocodeTimeout.current);
-    }
-
-    // Reverse geocode after tap
-    reverseGeocodeTimeout.current = setTimeout(() => {
-      reverseGeocode(latitude, longitude);
-    }, 800);
-  };
-
-  /**
-   * Confirm location selection
-   */
   const handleConfirm = () => {
-    console.log('✅ [Map Picker] Location confirmed:', selectedLocation, address);
     onLocationSelected({
-      ...selectedLocation,
-      address: address || `${selectedLocation.latitude.toFixed(6)}, ${selectedLocation.longitude.toFixed(6)}`,
+      latitude:  coords.latitude,
+      longitude: coords.longitude,
+      address:   address || `${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`,
     });
     onClose();
   };
 
-  /**
-   * Reverse geocode initial location
-   */
-  useEffect(() => {
-    if (visible) {
-      reverseGeocode(initialLatitude, initialLongitude);
+  // ─── Leaflet HTML ────────────────────────────────────────────────────────
+  const leafletHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body, #map { width: 100%; height: 100%; }
+    .leaflet-container { background: #e8e8e8; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var lat = ${initialLatitude};
+    var lng = ${initialLongitude};
+
+    var map = L.map('map', {
+      zoomControl: true,
+      attributionControl: false,
+    }).setView([lat, lng], 15);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+    }).addTo(map);
+
+    var redIcon = L.divIcon({
+      className: '',
+      html: '<div style="width:28px;height:28px;background:#DC143C;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
+      iconSize: [28, 28],
+      iconAnchor: [14, 28],
+      popupAnchor: [0, -30],
+    });
+
+    var marker = L.marker([lat, lng], { icon: redIcon, draggable: true }).addTo(map);
+
+    function notifyPin(latlng) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'pin_moved',
+        lat: latlng.lat,
+        lng: latlng.lng,
+      }));
     }
 
-    // Cleanup timeout on unmount
-    return () => {
-      if (reverseGeocodeTimeout.current) {
-        clearTimeout(reverseGeocodeTimeout.current);
-      }
-    };
-  }, [visible]);
+    marker.on('dragend', function(e) {
+      notifyPin(e.target.getLatLng());
+    });
+
+    map.on('click', function(e) {
+      marker.setLatLng(e.latlng);
+      notifyPin(e.latlng);
+    });
+  </script>
+</body>
+</html>`;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      onRequestClose={onClose}
-      transparent={false}
-    >
-      <View style={styles.container}>
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent={false}>
+      <SafeAreaView style={styles.container}>
+
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={28} color="#333" />
+          <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
+            <Ionicons name="close" size={26} color="#333" />
           </TouchableOpacity>
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Select Location</Text>
-            <Text style={styles.headerSubtitle}>Drag pin to adjust</Text>
+            <Text style={styles.headerTitle}>Pin Location</Text>
+            <Text style={styles.headerSub}>Tap map or drag pin to select</Text>
           </View>
-          <View style={styles.closeButton} />
+          <View style={styles.headerBtn} />
         </View>
 
         {/* Map */}
         <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
+          <WebView
+            ref={webViewRef}
+            source={{ html: leafletHTML }}
             style={styles.map}
-            initialRegion={{
-              latitude: initialLatitude,
-              longitude: initialLongitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            }}
-            onPress={handleMapPress}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-          >
-            {/* CartoDB Voyager tiles - More app-friendly than direct OSM */}
-            
-
-            {/* Draggable Marker */}
-            <Marker
-  coordinate={selectedLocation}
-  draggable
-  onDragEnd={handleMarkerDragEnd}
-  pinColor="#DC143C"
-/>
-          </MapView>
+            onMessage={handleWebMessage}
+            onLoadEnd={() => setIsLoading(false)}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            scrollEnabled={false}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+          />
+          {isLoading && (
+            <View style={styles.mapLoader}>
+              <ActivityIndicator size="large" color="#DC143C" />
+              <Text style={styles.mapLoaderText}>Loading map...</Text>
+            </View>
+          )}
         </View>
 
-        {/* Address Display */}
-        <View style={styles.addressContainer}>
-          <View style={styles.addressHeader}>
-            <Ionicons name="location-outline" size={20} color="#DC143C" />
-            <Text style={styles.addressLabel}>Selected Location</Text>
-            {isReverseGeocoding && (
-              <ActivityIndicator size="small" color="#DC143C" style={styles.addressLoader} />
-            )}
+        {/* Address panel */}
+        <View style={styles.panel}>
+          <View style={styles.panelRow}>
+            <Ionicons name="location" size={20} color="#DC143C" />
+            <Text style={styles.panelLabel}>Selected Location</Text>
+            {isGeocoding && <ActivityIndicator size="small" color="#DC143C" style={{ marginLeft: 'auto' }} />}
           </View>
-          
-          <Text style={styles.addressText} numberOfLines={3}>
-            {address || 'Drag the pin or tap on the map to select location'}
+          <Text style={styles.panelAddress} numberOfLines={2}>
+            {address || 'Tap or drag the pin on the map'}
           </Text>
-          
-          <View style={styles.coordinatesRow}>
-            <Text style={styles.coordinatesText}>
-              📍 {selectedLocation.latitude.toFixed(6)}, {selectedLocation.longitude.toFixed(6)}
-            </Text>
-          </View>
+          <Text style={styles.panelCoords}>
+            {coords.latitude.toFixed(5)}, {coords.longitude.toFixed(5)}
+          </Text>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.cancelButton]}
-            onPress={onClose}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+        {/* Buttons */}
+        <View style={styles.actions}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionButton, styles.confirmButton]}
-            onPress={handleConfirm}
-            disabled={!address && !isReverseGeocoding}
-          >
+          <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm} activeOpacity={0.8}>
             <Ionicons name="checkmark-circle" size={20} color="#fff" />
-            <Text style={styles.confirmButtonText}>Confirm Location</Text>
+            <Text style={styles.confirmBtnText}>Confirm Location</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Help Hint */}
-        <View style={styles.hintContainer}>
-          <Ionicons name="information-circle-outline" size={16} color="#666" />
-          <Text style={styles.hintText}>
-            Drag the red pin to adjust the exact location
-          </Text>
-        </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
+  container: { flex: 1, backgroundColor: '#fff' },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 50,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 12, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
     backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    ...Platform.select({
+      android: { paddingTop: 16 },
+    }),
   },
-  closeButton: {
-    width: 40,
-    height: 40,
+  headerBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  headerCenter: { flex: 1, alignItems: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: 'bold', color: '#1a1a1a' },
+  headerSub: { fontSize: 12, color: '#888', marginTop: 2 },
+
+  mapContainer: { flex: 1, position: 'relative' },
+  map: { flex: 1 },
+  mapLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#f8f8f8',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  mapContainer: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-  },
-  customMarker: {
-    alignItems: 'center',
-  },
-  markerDot: {
+  mapLoaderText: { marginTop: 10, fontSize: 14, color: '#666' },
+
+  panel: {
     backgroundColor: '#fff',
-    borderRadius: 25,
-    padding: 2,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderTopWidth: 1, borderTopColor: '#e0e0e0',
   },
-  addressContainer: {
+  panelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  panelLabel: { fontSize: 13, fontWeight: '600', color: '#333', marginLeft: 6 },
+  panelAddress: { fontSize: 14, color: '#1a1a1a', lineHeight: 20, marginBottom: 4 },
+  panelCoords: { fontSize: 11, color: '#999', fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+
+  actions: {
+    flexDirection: 'row', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 12,
     backgroundColor: '#fff',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopWidth: 1, borderTopColor: '#f0f0f0',
   },
-  addressHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
+  cancelBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: 12,
+    backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0',
+    alignItems: 'center', justifyContent: 'center',
   },
-  addressLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginLeft: 6,
+  cancelBtnText: { fontSize: 15, fontWeight: '600', color: '#333' },
+  confirmBtn: {
+    flex: 2, flexDirection: 'row', paddingVertical: 14, borderRadius: 12,
+    backgroundColor: '#DC143C', alignItems: 'center', justifyContent: 'center', gap: 8,
+    ...Platform.select({
+      ios: { shadowColor: '#DC143C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      android: { elevation: 4 },
+    }),
   },
-  addressLoader: {
-    marginLeft: 'auto',
-  },
-  addressText: {
-    fontSize: 15,
-    color: '#333',
-    lineHeight: 22,
-    marginBottom: 8,
-  },
-  coordinatesRow: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  coordinatesText: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'monospace',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  cancelButton: {
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-  },
-  confirmButton: {
-    backgroundColor: '#DC143C',
-  },
-  confirmButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  hintContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 20,
-    gap: 6,
-  },
-  hintText: {
-    fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
-  },
+  confirmBtnText: { fontSize: 15, fontWeight: 'bold', color: '#fff' },
 });
 
 export default LocationMapPicker;
-

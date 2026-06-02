@@ -51,38 +51,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   // ── Auto-logout after 20 s in background ──────────────────────────────────
-  const AUTO_LOGOUT_MS = 20_000; // 20 seconds
+  const AUTO_LOGOUT_MS = 20_000;
   const backgroundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
+  // userRef always holds latest user so the timer callback is never stale
+  const userRef = useRef<User | null>(null);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  // Declared BEFORE the AppState useEffect so the setTimeout closure can call it
+  const performLogout = async () => {
+    try {
+      const currentUser = userRef.current;
+      if (currentUser) {
+        await logAction({
+          actorRole: currentUser.role,
+          actorId: currentUser.id,
+          actorName: currentUser.name,
+          action: 'USER_LOGOUT',
+          entityType: 'USER',
+          entityId: currentUser.id,
+        });
+      }
+      setUser(null);
+      await clearUserFromStorage();
+      console.log('[AutoLogout] Session cleared');
+    } catch (error) {
+      console.error('[AutoLogout] Error:', error);
+      setUser(null);
+      await clearUserFromStorage();
+    }
+  };
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState: AppStateStatus) => {
-      const prev = appStateRef.current;
       appStateRef.current = nextState;
-
       if (nextState === 'background' || nextState === 'inactive') {
-        // App moved to background — start countdown
         if (!backgroundTimerRef.current) {
           backgroundTimerRef.current = setTimeout(() => {
-            console.log('⏱️ [AutoLogout] 20 s in background — logging out');
+            console.log('[AutoLogout] 20s in background - logging out');
             performLogout();
           }, AUTO_LOGOUT_MS);
         }
       } else if (nextState === 'active') {
-        // App returned to foreground — cancel countdown
         if (backgroundTimerRef.current) {
           clearTimeout(backgroundTimerRef.current);
           backgroundTimerRef.current = null;
-          console.log('✅ [AutoLogout] App resumed before timeout — logout cancelled');
+          console.log('[AutoLogout] App resumed - logout cancelled');
         }
       }
     });
-
     return () => {
       subscription.remove();
-      if (backgroundTimerRef.current) {
-        clearTimeout(backgroundTimerRef.current);
-      }
+      if (backgroundTimerRef.current) clearTimeout(backgroundTimerRef.current);
     };
   }, []);
   // ──────────────────────────────────────────────────────────────────────────
@@ -255,33 +276,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Note: Audit log is created before logout to ensure
    * user data is still available
    */
-
-  // Internal helper used by the auto-logout timer (avoids stale closure on `user`)
-  const userRef = useRef<User | null>(null);
-  useEffect(() => { userRef.current = user; }, [user]);
-
-  const performLogout = async () => {
-    try {
-      const currentUser = userRef.current;
-      if (currentUser) {
-        await logAction({
-          actorRole: currentUser.role,
-          actorId: currentUser.id,
-          actorName: currentUser.name,
-          action: 'USER_LOGOUT',
-          entityType: 'USER',
-          entityId: currentUser.id,
-        });
-      }
-      setUser(null);
-      await clearUserFromStorage();
-      console.log('✅ [AutoLogout] Session cleared');
-    } catch (error) {
-      console.error('❌ [AutoLogout] Error during auto-logout:', error);
-      setUser(null);
-      await clearUserFromStorage();
-    }
-  };
 
   const logout = async (): Promise<void> => {
     try {
