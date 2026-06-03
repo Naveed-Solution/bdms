@@ -1922,7 +1922,7 @@ app.get('/api/blood-requests/available/:donorId', (req, res) => {
           if (!donorResult) {
             // Check if ANY donor has already accepted this request (ONE DONOR ONLY rule)
             db.get(`
-              SELECT 1 FROM accepted_donors WHERE request_id = ? AND status != 'CANCELLED'
+              SELECT 1 FROM accepted_donors ad JOIN blood_requests br ON ad.request_id = br.id WHERE ad.request_id = ? AND br.status != 'CANCELLED'
             `, [request.id], (err, anyAcceptedResult) => {
               // Only show request if no donor has accepted it yet
               if (!anyAcceptedResult) {
@@ -1985,11 +1985,12 @@ app.post('/api/blood-requests/:id/accept', (req, res) => {
       });
     }
 
-    // Check if donor already has an active donation
+    // Check if donor already has an active donation (join blood_requests for status)
     db.get(`
-      SELECT request_id, status FROM accepted_donors 
-      WHERE donor_id = ? AND status NOT IN ('CANCELLED', 'COMPLETED')
-      ORDER BY accepted_at DESC
+      SELECT ad.request_id, br.status FROM accepted_donors ad
+      JOIN blood_requests br ON ad.request_id = br.id
+      WHERE ad.donor_id = ? AND br.status NOT IN ('CANCELLED', 'COMPLETED')
+      ORDER BY ad.accepted_at DESC
       LIMIT 1
     `, [donorId], (err, activeRequest) => {
       if (err) {
@@ -2703,9 +2704,10 @@ app.get('/api/donor-stats/:donorId', (req, res) => {
 
   db.get(`
     SELECT 
-      (SELECT COUNT(*) FROM accepted_donors 
-       WHERE donor_id = ? 
-       AND status = 'COMPLETED') as donated_count
+      (SELECT COUNT(*) FROM accepted_donors ad2
+       JOIN blood_requests br2 ON ad2.request_id = br2.id
+       WHERE ad2.donor_id = ? 
+       AND br2.status = 'COMPLETED') as donated_count
   `, [donorId], (err, stats) => {
     if (err) {
       console.error('Error fetching donor stats:', err);
@@ -4106,7 +4108,7 @@ app.get('/api/donor/:donorId/recent-donations', (req, res) => {
       br.id as request_id
     FROM accepted_donors ad
     JOIN blood_requests br ON ad.request_id = br.id
-    WHERE ad.donor_id = ? AND ad.status = 'COMPLETED'
+    WHERE ad.donor_id = ? AND br.status = 'COMPLETED'
     ORDER BY br.updated_at DESC
     LIMIT ?
   `, [donorId, limit], (err, donations) => {
