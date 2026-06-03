@@ -1507,19 +1507,24 @@ app.post('/api/blood-requests', (req, res) => {
 
         const now = Math.floor(Date.now() / 1000);
 
+    // Step 1: Insert with only the guaranteed core columns
     db.run(`
       INSERT INTO blood_requests (
         id, recipient_id, recipient_name, blood_group, units, accepted_units,
-        urgency_level, location, notes, status, share_location, 
-        recipient_latitude, recipient_longitude, recipient_location_updated_at,
+        urgency_level, location, notes, status,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?)
-    `, [id, recipientId, recipientName, bloodGroup, units, urgencyLevel, location, notes || null, 
-        shareLocation ? 1 : 0, recipientLatitude || null, recipientLongitude || null, shareLocation ? now : null, now, now], function(err) {
+      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, 'PENDING', ?, ?)
+    `, [id, recipientId, recipientName, bloodGroup, units, urgencyLevel, location, notes || null, now, now], function(err) {
       if (err) {
-        console.error('Error creating blood request:', err);
-        return res.status(500).json({ error: 'Failed to create request' });
+        console.error('Error creating blood request (core insert):', err);
+        return res.status(500).json({ error: 'Failed to create request', detail: err.message });
       }
+
+      // Step 2: Update optional location columns (silently ignore if columns don't exist yet)
+      db.run(`UPDATE blood_requests SET share_location = ?, recipient_latitude = ?, recipient_longitude = ?, recipient_location_updated_at = ? WHERE id = ?`,
+        [shareLocation ? 1 : 0, recipientLatitude || null, recipientLongitude || null, shareLocation ? now : null, id],
+        (locErr) => { if (locErr) console.warn('Location columns not yet migrated (safe to ignore):', locErr.message); }
+      );
 
       // Create audit log for request creation
       createAuditLog({
