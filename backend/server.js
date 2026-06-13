@@ -1892,8 +1892,8 @@ app.get('/api/blood-requests/available/:donorId', (req, res) => {
       FROM blood_requests br
       LEFT JOIN recipient_profiles rp ON br.recipient_id = rp.user_id
       WHERE br.blood_group IN (${placeholders})
-        AND br.status != 'COMPLETED'
-        AND br.status != 'CANCELLED'
+        AND UPPER(COALESCE(br.status, '')) != 'COMPLETED'
+        AND UPPER(COALESCE(br.status, '')) != 'CANCELLED'
         AND br.accepted_units < br.units
       ORDER BY 
         CASE WHEN br.urgency_level = 'EMERGENCY' THEN 0 ELSE 1 END,
@@ -1922,7 +1922,7 @@ app.get('/api/blood-requests/available/:donorId', (req, res) => {
           if (!donorResult) {
             // Check if ANY donor has already accepted this request (ONE DONOR ONLY rule)
             db.get(`
-              SELECT 1 FROM accepted_donors ad JOIN blood_requests br ON ad.request_id = br.id WHERE ad.request_id = ? AND br.status != 'CANCELLED'
+              SELECT 1 FROM accepted_donors ad JOIN blood_requests br ON ad.request_id = br.id WHERE ad.request_id = ? AND UPPER(COALESCE(br.status, '')) != 'CANCELLED'
             `, [request.id], (err, anyAcceptedResult) => {
               // Only show request if no donor has accepted it yet
               if (!anyAcceptedResult) {
@@ -2013,7 +2013,9 @@ app.post('/api/blood-requests/:id/accept', (req, res) => {
           return res.status(403).json({ error: 'Donor profile not found' });
         }
 
-        if (donorProfile.approval_status !== 'APPROVED') {
+        const donorApprovalStatus = String(donorProfile.approval_status || '').trim().toUpperCase();
+
+        if (donorApprovalStatus !== 'APPROVED') {
           return res.status(403).json({ error: 'Donor profile not approved' });
         }
 
@@ -2037,9 +2039,10 @@ app.post('/api/blood-requests/:id/accept', (req, res) => {
           return res.status(404).json({ error: 'Request not found' });
         }
 
+        const requestStatus = String(request.status || '').trim().toUpperCase();
         const newAcceptedUnits = request.accepted_units + 1;
         // Keep status as ACCEPTED, don't auto-complete
-        const newStatus = request.status === 'PENDING' ? 'ACCEPTED' : request.status;
+        const newStatus = requestStatus === 'PENDING' ? 'ACCEPTED' : (requestStatus || 'PENDING');
 
         // Update accepted units and status
         db.run(`
@@ -2576,16 +2579,18 @@ app.post('/api/blood-requests/:id/cancel', (req, res) => {
       return res.status(404).json({ success: false, error: 'Request not found' });
     }
 
-    console.log(`📋 [Cancel] Current request status: ${request.status}`);
+    const requestStatus = String(request.status || '').trim().toUpperCase();
+
+    console.log(`📋 [Cancel] Current request status: ${requestStatus}`);
 
     // Check if reason is required (after acceptance)
-    if (request.status === 'ACCEPTED' && !reason) {
+    if (requestStatus === 'ACCEPTED' && !reason) {
       console.error('❌ [Cancel] Reason required for accepted request');
       return res.status(400).json({ success: false, error: 'Cancellation reason is required for accepted requests' });
     }
 
     // For pending requests, recipient can cancel without reason
-    if (request.status === 'PENDING' && role === 'recipient') {
+    if (requestStatus === 'PENDING' && role === 'recipient') {
       db.run(`
         UPDATE blood_requests 
         SET status = 'CANCELLED', cancelled_by = ?, cancellation_reason = ?, updated_at = ?
