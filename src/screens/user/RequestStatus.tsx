@@ -292,9 +292,13 @@ const RequestStatus: React.FC = () => {
         navigation.replace('UserHome');
       }
     } catch (error: any) {
+      const errorMessage = error instanceof Error && error.message
+        ? error.message
+        : 'Failed to cancel request';
+
       showAlert({
         title: 'Error',
-        message: error.message || 'Failed to cancel request',
+        message: errorMessage,
         type: 'error',
       });
       setIsRedirecting(false); // Allow polling again on error

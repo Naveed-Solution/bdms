@@ -228,7 +228,9 @@ const AvailableRequests: React.FC = () => {
       showAlert({
         type: 'error',
         title: 'Error',
-        message: 'Unable to accept request. Please try again.',
+        message: error instanceof Error && error.message
+          ? error.message
+          : 'Unable to accept request. Please try again.',
       });
     } finally {
       setAcceptingId(null);
