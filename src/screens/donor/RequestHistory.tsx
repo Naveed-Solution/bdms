@@ -150,9 +150,17 @@ export default function RequestHistory() {
           type: 'success',
         });
 
-        // Show rating modal after completion
         setShowCompleteModal(false);
-        setShowRatingModal(true);
+        if (response.bothCompleted) {
+          // Show rating modal only after both sides have completed the donation
+          setShowRatingModal(true);
+        } else {
+          showAlert({
+            title: 'Completion Recorded',
+            message: 'Your completion has been saved. Waiting for the recipient to complete before rating.',
+            type: 'info',
+          });
+        }
 
         loadDonations();
       }

@@ -1847,16 +1847,15 @@ app.get('/api/blood-requests/available/:donorId', (req, res) => {
       });
     }
 
-    // Check if donor can donate (3-month rule based on last COMPLETED donation)
+    // Check if donor can donate (90-day rule based on last COMPLETED donation)
     // NOTE: We check last_donated from donor_profiles, which only updates on completion
     if (donorProfile.last_donated) {
       const lastDonatedDate = new Date(donorProfile.last_donated * 1000); // Convert from Unix timestamp
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
       
-      if (lastDonatedDate > threeMonthsAgo) {
+      if (lastDonatedDate > ninetyDaysAgo) {
         const nextEligibleDate = new Date(lastDonatedDate);
-        nextEligibleDate.setMonth(nextEligibleDate.getMonth() + 3);
+        nextEligibleDate.setDate(nextEligibleDate.getDate() + 90);
         console.log(`❌ Donor ${donorId} not eligible yet. Last donated: ${lastDonatedDate}, Next eligible: ${nextEligibleDate}`);
         return res.json({ 
           requests: [], 
@@ -2210,12 +2209,11 @@ app.post('/api/blood-requests/:id/complete', (req, res) => {
 
   console.log(`🎯 ${role} completing request ${id} for donor ${targetDonorId}`);
 
-  // Update accepted_donors: mark as completed and set status to COMPLETED
+  // Track completion state for the specific donor/recipient pair
   db.run(`
     UPDATE accepted_donors 
     SET ${updateField} = 1, 
-        ${updateTimeField} = ?,
-        status = 'COMPLETED'
+        ${updateTimeField} = ?
     WHERE request_id = ? AND donor_id = ?
   `, [now, id, targetDonorId], function(err) {
     if (err) {
@@ -2227,58 +2225,87 @@ app.post('/api/blood-requests/:id/complete', (req, res) => {
       return res.status(404).json({ error: 'Accepted donation not found' });
     }
 
-    // Update donor's last_donated date immediately (as Unix timestamp)
-    db.run(`
-      UPDATE donor_profiles 
-      SET last_donated = ?
-      WHERE user_id = ?
-    `, [now, targetDonorId], (err) => {
-      if (err) {
-        console.error('❌ Error updating last_donated:', err);
-      } else {
-        const donationDate = new Date(now * 1000).toLocaleDateString();
-        console.log(`✅ Updated last_donated for donor ${targetDonorId}: ${donationDate}`);
+    db.get(`SELECT donor_completed, recipient_completed FROM accepted_donors WHERE request_id = ? AND donor_id = ?`, [id, targetDonorId], (statusErr, completionState) => {
+      if (statusErr) {
+        console.error('❌ Error checking completion state:', statusErr);
+        return res.status(500).json({ error: 'Failed to check completion state' });
       }
-    });
 
-    // Update blood_requests status to COMPLETED
-    db.run(`
-      UPDATE blood_requests 
-      SET status = 'COMPLETED', updated_at = ?
-      WHERE id = ?
-    `, [now, id], (err) => {
-      if (err) {
-        console.error('❌ Error updating request status:', err);
-      } else {
-        console.log(`✅ Request ${id} marked as COMPLETED by ${role}`);
-        
-        // Get user name for audit log
-        db.get(`SELECT name FROM users WHERE id = ?`, [userId], (err, user) => {
-          if (!err && user) {
-            // Create audit log for request completion
-            createAuditLog({
-              actorRole: role === 'donor' ? 'donor' : 'user',
-              actorId: userId,
-              actorName: user.name,
-              action: 'COMPLETE_BLOOD_REQUEST',
-              entityType: 'BLOOD_REQUEST',
-              entityId: id,
-              details: {
-                completedBy: role,
-                donorId: targetDonorId
-              },
-              ipAddress: req.ip || req.connection.remoteAddress
-            });
-          }
+      const bothCompleted = !!completionState && completionState.donor_completed === 1 && completionState.recipient_completed === 1;
+
+      if (!bothCompleted) {
+        console.log(`✅ Request ${id} marked complete by ${role}, waiting for the other party`);
+        return res.json({
+          success: true,
+          message: 'Completion recorded. Waiting for the other party to complete.',
+          status: 'ACCEPTED',
+          bothCompleted: false
         });
       }
 
-      // Return success response
-      res.json({ 
-        success: true, 
-        message: 'Donation completed successfully',
-        status: 'COMPLETED',
-        bothCompleted: true // Always true now since one completion = done
+      // Only finalize the donation once both sides have completed it
+      db.run(`
+        UPDATE accepted_donors 
+        SET status = 'COMPLETED'
+        WHERE request_id = ? AND donor_id = ?
+      `, [id, targetDonorId], (finalizeErr) => {
+        if (finalizeErr) {
+          console.error('❌ Error finalizing completion state:', finalizeErr);
+          return res.status(500).json({ error: 'Failed to finalize completion' });
+        }
+
+        db.run(`
+          UPDATE blood_requests 
+          SET status = 'COMPLETED', updated_at = ?
+          WHERE id = ?
+        `, [now, id], (requestErr) => {
+          if (requestErr) {
+            console.error('❌ Error updating request status:', requestErr);
+            return res.status(500).json({ error: 'Failed to update request status' });
+          }
+
+          // Update donor's last_donated date only when the donation is fully completed
+          db.run(`
+            UPDATE donor_profiles 
+            SET last_donated = ?
+            WHERE user_id = ?
+          `, [now, targetDonorId], (donorErr) => {
+            if (donorErr) {
+              console.error('❌ Error updating last_donated:', donorErr);
+            } else {
+              const donationDate = new Date(now * 1000).toLocaleDateString();
+              console.log(`✅ Updated last_donated for donor ${targetDonorId}: ${donationDate}`);
+            }
+          });
+
+          console.log(`✅ Request ${id} marked as COMPLETED by ${role}`);
+
+          // Get user name for audit log
+          db.get(`SELECT name FROM users WHERE id = ?`, [userId], (userErr, user) => {
+            if (!userErr && user) {
+              createAuditLog({
+                actorRole: role === 'donor' ? 'donor' : 'user',
+                actorId: userId,
+                actorName: user.name,
+                action: 'COMPLETE_BLOOD_REQUEST',
+                entityType: 'BLOOD_REQUEST',
+                entityId: id,
+                details: {
+                  completedBy: role,
+                  donorId: targetDonorId
+                },
+                ipAddress: req.ip || req.connection.remoteAddress
+              });
+            }
+          });
+
+          res.json({
+            success: true,
+            message: 'Donation completed successfully',
+            status: 'COMPLETED',
+            bothCompleted: true
+          });
+        });
       });
     });
   });

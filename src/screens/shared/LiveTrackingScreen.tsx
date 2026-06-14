@@ -303,7 +303,6 @@ const LiveTrackingScreen: React.FC = () => {
   const handleComplete = async () => {
     setIsSubmitting(true);
     setIsPollingPaused(true); // Pause polling
-    setIsRedirecting(true); // STOP all polling immediately
 
     const completionData = {
       userId: user!.id,
@@ -320,6 +319,21 @@ const LiveTrackingScreen: React.FC = () => {
       if (!result.success) {
         throw new Error('Failed to complete request');
       }
+
+      if (!result.bothCompleted) {
+        setShowCompleteModal(false);
+        setIsPollingPaused(false);
+
+        showAlert({
+          title: 'Completion Recorded',
+          message: 'Your completion has been saved. Waiting for the other party to complete before rating.',
+          type: 'success'
+        });
+
+        return;
+      }
+
+      setIsRedirecting(true); // STOP all polling immediately once fully completed
 
       // Force refresh the blood request context to update UI immediately
       await refreshRequests();

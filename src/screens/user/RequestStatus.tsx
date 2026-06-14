@@ -238,9 +238,17 @@ const RequestStatus: React.FC = () => {
           type: 'success',
         });
 
-        // Show rating modal after completion
-        setSelectedDonor(donor);
-        setShowRatingModal(true);
+        if (response.bothCompleted) {
+          // Show rating modal only after both sides have completed the donation
+          setSelectedDonor(donor);
+          setShowRatingModal(true);
+        } else {
+          showAlert({
+            title: 'Completion Recorded',
+            message: 'Your completion has been saved. Waiting for the donor to complete before rating.',
+            type: 'info',
+          });
+        }
 
         loadRequestData(true); // Force reload
       }
