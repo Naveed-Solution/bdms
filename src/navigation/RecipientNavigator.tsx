@@ -11,7 +11,7 @@ import RequestStatus from '../screens/user/RequestStatus';
 import RequestHistory from '../screens/user/RequestHistory';
 import RecipientNotifications from '../screens/user/RecipientNotifications';
 import RecipientProfile from '../screens/user/RecipientProfile';
-import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen';
+import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen_FIXED';
 import RatingScreen from '../screens/shared/RatingScreen';
 
 /**
@@ -64,7 +64,7 @@ const RecipientNavigator: React.FC = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        headerBackTitleVisible: false,
+        headerBackTitle: '',
         headerLeftContainerStyle: {
           paddingLeft: 10,
         },

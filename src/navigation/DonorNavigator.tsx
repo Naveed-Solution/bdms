@@ -8,7 +8,7 @@ import DonorProfileForm from '../screens/donor/DonorProfileForm';
 import DonorProfile from '../screens/donor/DonorProfile';
 import AvailableRequests from '../screens/donor/AvailableRequests';
 import RequestHistory from '../screens/donor/RequestHistory';
-import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen';
+import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen_FIXED';
 import RatingScreen from '../screens/shared/RatingScreen';
 import DonorNotifications from '../screens/donor/DonorNotifications';
 
@@ -66,7 +66,7 @@ const DonorNavigator: React.FC = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        headerBackTitleVisible: false,
+        headerBackTitle: '',
         headerLeftContainerStyle: {
           paddingLeft: 10,
         },

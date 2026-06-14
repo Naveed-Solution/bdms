@@ -236,6 +236,17 @@ const LiveTrackingScreen: React.FC = () => {
       const result = await bloodRequestAPI.complete(requestId, completionData);
       console.log('✅ [LiveTracking] Request completed successfully:', result);
 
+      if (!result.bothCompleted) {
+        showAlert({
+          title: 'Completion Recorded',
+          message: 'Your completion has been saved. Waiting for the other party to complete before rating.',
+          type: 'info'
+        });
+
+        setIsPollingPaused(false);
+        return;
+      }
+
       showAlert({
         title: 'Request Completed',
         message: 'Thank you for completing the donation!',
