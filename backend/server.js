@@ -2735,10 +2735,7 @@ app.get('/api/donor-accepted/:donorId', (req, res) => {
     SELECT 
       br.*,
       ad.accepted_at,
-      ad.donor_completed,
-      ad.donor_completed_at,
-      ad.recipient_completed,
-      ad.recipient_completed_at,
+      ad.*,
       ad.status as donation_status,
       rp.mobile as recipient_mobile,
       rc.cancelled_by,
@@ -4154,14 +4151,7 @@ app.get('/api/admin/recent-activities', (req, res) => {
       timestamp,
       details
     FROM audit_logs
-    WHERE timestamp >= strftime('%s', 'now', '-7 days')
-    
-    UNION ALL
-    
-    SELECT 
-      'REQUEST' as type,
-      'NEW_REQUEST' as action,
-      '' as actor_name,
+          ad.*,
       'recipient' as actor_role,
       created_at as timestamp,
       json_object('blood_group', blood_group, 'urgency', urgency_level, 'status', status) as details
