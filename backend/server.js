@@ -2862,11 +2862,7 @@ app.get('/api/location/:requestId', (req, res) => {
     // Also get request location sharing preference and recipient name
     db.get(`
       SELECT 
-        br.share_location, 
-        br.recipient_latitude, 
-        br.recipient_longitude, 
-        br.recipient_location_updated_at,
-        br.recipient_id,
+        br.*,
         u.name as recipient_name
       FROM blood_requests br
       LEFT JOIN users u ON br.recipient_id = u.id
@@ -2880,7 +2876,7 @@ app.get('/api/location/:requestId', (req, res) => {
       res.json({
         success: true,
         locations: locations || [],
-        shareLocation: request ? request.share_location : 0,
+        shareLocation: request && typeof request.share_location !== 'undefined' ? request.share_location : 0,
         recipientName: request ? request.recipient_name : null,
         recipientStaticLocation: request && request.recipient_latitude && request.recipient_longitude ? {
           latitude: request.recipient_latitude,
