@@ -211,18 +211,11 @@ const AvailableRequests: React.FC = () => {
         message: `Thank you for helping ${request.recipientName}. They will be notified of your acceptance.`,
       });
 
-      // Navigate to Live Tracking screen
-      setTimeout(() => {
-        navigation.navigate('LiveTracking', {
-          requestId: request.id,
-          donorId: user.id,
-        });
-      }, 1000);
-
-      // Reload requests after short delay to ensure backend is updated
-      setTimeout(() => {
-        loadRequests();
-      }, 500);
+      // Navigate to Live Tracking immediately after acceptance
+      navigation.navigate('LiveTracking', {
+        requestId: request.id,
+        donorId: user.id,
+      });
     } catch (error) {
       console.error('Error accepting request:', error);
       showAlert({
