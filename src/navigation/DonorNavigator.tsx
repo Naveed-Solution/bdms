@@ -8,7 +8,7 @@ import DonorProfileForm from '../screens/donor/DonorProfileForm';
 import DonorProfile from '../screens/donor/DonorProfile';
 import AvailableRequests from '../screens/donor/AvailableRequests';
 import RequestHistory from '../screens/donor/RequestHistory';
-import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen_FIXED';
+import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen';
 import RatingScreen from '../screens/shared/RatingScreen';
 import DonorNotifications from '../screens/donor/DonorNotifications';
 
@@ -42,7 +42,7 @@ export type DonorStackParamList = {
   AvailableRequests: undefined;
   RequestHistory: undefined;
   LiveTracking: { requestId: string; donorId: string };
-  RatingScreen: { requestId: string; donorId: string; donorName: string; recipientName: string };
+  RatingScreen: { requestId: string; donorId: string; donorName?: string; recipientName?: string; recipientId?: string; raterRole?: string };
   Notifications: undefined;
 };
 
@@ -66,7 +66,7 @@ const DonorNavigator: React.FC = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        headerBackTitle: '',
+        headerBackTitleVisible: false,
         headerLeftContainerStyle: {
           paddingLeft: 10,
         },

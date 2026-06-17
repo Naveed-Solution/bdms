@@ -38,7 +38,7 @@ export type RootStackParamList = {
   
   // Shared screens
   LiveTracking: { requestId: string; donorId: string };
-  RatingScreen: { requestId: string; donorId: string; donorName: string; recipientName: string };
+  RatingScreen: { requestId: string; donorId: string; donorName?: string; recipientName?: string; recipientId?: string; raterRole?: string };
 };
 
 export type DonorStackParamList = {

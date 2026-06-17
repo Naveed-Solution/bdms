@@ -28,7 +28,7 @@ type RouteParams = RouteProp<RootStackParamList, 'RatingScreen'>;
 const RatingScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
-  const { requestId, donorId, donorName, recipientName } = route.params;
+  const { requestId, donorId, donorName, recipientName, recipientId, raterRole } = route.params;
   const { user } = useAuth();
   const { showAlert } = useAlert();
 
@@ -36,8 +36,10 @@ const RatingScreen: React.FC = () => {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isDonor = user?.role === 'donor';
-  const otherPersonName = isDonor ? recipientName : donorName;
+  const isDonor = (raterRole || user?.role) === 'donor';
+  const otherPersonName = isDonor ? (recipientName || 'Recipient') : (donorName || 'Donor');
+  // recipientId comes from LiveTrackingScreen's raterRole flow
+  const resolvedRecipientId = recipientId || route.params.recipientId || '';
 
   /**
    * Handle star rating selection

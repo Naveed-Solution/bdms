@@ -205,25 +205,24 @@ const AvailableRequests: React.FC = () => {
 
       await acceptRequest(request.id, user.id, user.name, currentLocation);
 
+      // Navigate to Live Tracking immediately — don't wait, the list re-polls every second
+      // and would remove this request from view before the timeout fires
+      navigation.navigate('LiveTracking', {
+        requestId: request.id,
+        donorId: user.id,
+      });
+
       showAlert({
         type: 'success',
         title: 'Request Accepted! 🩸',
         message: `Thank you for helping ${request.recipientName}. They will be notified of your acceptance.`,
-      });
-
-      // Navigate to Live Tracking immediately after acceptance
-      navigation.navigate('LiveTracking', {
-        requestId: request.id,
-        donorId: user.id,
       });
     } catch (error) {
       console.error('Error accepting request:', error);
       showAlert({
         type: 'error',
         title: 'Error',
-        message: error instanceof Error && error.message
-          ? error.message
-          : 'Unable to accept request. Please try again.',
+        message: 'Unable to accept request. Please try again.',
       });
     } finally {
       setAcceptingId(null);

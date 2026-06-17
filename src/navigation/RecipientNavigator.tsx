@@ -11,7 +11,7 @@ import RequestStatus from '../screens/user/RequestStatus';
 import RequestHistory from '../screens/user/RequestHistory';
 import RecipientNotifications from '../screens/user/RecipientNotifications';
 import RecipientProfile from '../screens/user/RecipientProfile';
-import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen_FIXED';
+import LiveTrackingScreen from '../screens/shared/LiveTrackingScreen';
 import RatingScreen from '../screens/shared/RatingScreen';
 
 /**
@@ -41,7 +41,7 @@ export type RecipientStackParamList = {
   RequestHistory: undefined;
   Notifications: undefined;
   LiveTracking: { requestId: string; donorId: string };
-  RatingScreen: { requestId: string; donorId: string; donorName: string; recipientName: string };
+  RatingScreen: { requestId: string; donorId: string; donorName?: string; recipientName?: string; recipientId?: string; raterRole?: string };
 };
 
 const Stack = createStackNavigator<RecipientStackParamList>();
@@ -64,7 +64,7 @@ const RecipientNavigator: React.FC = () => {
         headerTitleStyle: {
           fontWeight: 'bold',
         },
-        headerBackTitle: '',
+        headerBackTitleVisible: false,
         headerLeftContainerStyle: {
           paddingLeft: 10,
         },
