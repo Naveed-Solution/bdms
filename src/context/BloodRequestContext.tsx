@@ -53,7 +53,6 @@ export interface BloodRequest {
   updatedAt: Date;
   acceptedBy?: AcceptedDonor[];
   declinedBy?: string[];
-  // Location sharing fields
   shareLocation?: boolean;
   recipientLatitude?: number;
   recipientLongitude?: number;

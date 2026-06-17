@@ -276,7 +276,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    * Note: Audit log is created before logout to ensure
    * user data is still available
    */
-
   const logout = async (): Promise<void> => {
     try {
       console.log('👋 Logging out user');

@@ -223,7 +223,7 @@ function initializeDatabase() {
       
       // Migration: Add missing columns if they don't exist
       db.run(`ALTER TABLE blood_requests ADD COLUMN units INTEGER NOT NULL DEFAULT 1`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+        if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
           console.error('Error adding units column:', err);
         } else if (!err) {
           console.log('✅ Added units column to blood_requests');
@@ -231,7 +231,7 @@ function initializeDatabase() {
       });
       
       db.run(`ALTER TABLE blood_requests ADD COLUMN accepted_units INTEGER DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+        if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
           console.error('Error adding accepted_units column:', err);
         } else if (!err) {
           console.log('✅ Added accepted_units column to blood_requests');
@@ -239,7 +239,7 @@ function initializeDatabase() {
       });
       
       db.run(`ALTER TABLE blood_requests ADD COLUMN recipient_mobile TEXT`, (err) => {
-        if (err && !err.message.includes('duplicate column')) {
+        if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
           console.error('Error adding recipient_mobile column:', err);
         } else if (!err) {
           console.log('✅ Added recipient_mobile column to blood_requests');
@@ -364,75 +364,75 @@ function initializeDatabase() {
 
   // Add completion tracking columns to accepted_donors
   db.run(`ALTER TABLE accepted_donors ADD COLUMN donor_completed INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding donor_completed column:', err);
     }
   });
 
   db.run(`ALTER TABLE accepted_donors ADD COLUMN donor_completed_at INTEGER`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding donor_completed_at column:', err);
     }
   });
 
   db.run(`ALTER TABLE accepted_donors ADD COLUMN recipient_completed INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding recipient_completed column:', err);
     }
   });
 
   db.run(`ALTER TABLE accepted_donors ADD COLUMN recipient_completed_at INTEGER`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding recipient_completed_at column:', err);
     }
   });
 
   db.run(`ALTER TABLE accepted_donors ADD COLUMN status TEXT DEFAULT 'ACCEPTED'`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding status column:', err);
     }
   });
 
   db.run(`ALTER TABLE accepted_donors ADD COLUMN donor_current_location TEXT`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding donor_current_location column:', err);
     }
   });
 
   // Add cancellation tracking to blood_requests
   db.run(`ALTER TABLE blood_requests ADD COLUMN cancelled_by TEXT`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding cancelled_by column:', err);
     }
   });
 
   db.run(`ALTER TABLE blood_requests ADD COLUMN cancellation_reason TEXT`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding cancellation_reason column:', err);
     }
   });
 
   // Add location sharing preference to blood_requests
   db.run(`ALTER TABLE blood_requests ADD COLUMN share_location INTEGER DEFAULT 0`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding share_location column:', err);
     }
   });
 
   db.run(`ALTER TABLE blood_requests ADD COLUMN recipient_latitude REAL`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding recipient_latitude column:', err);
     }
   });
 
   db.run(`ALTER TABLE blood_requests ADD COLUMN recipient_longitude REAL`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding recipient_longitude column:', err);
     }
   });
 
   db.run(`ALTER TABLE blood_requests ADD COLUMN recipient_location_updated_at INTEGER`, (err) => {
-    if (err && !err.message.includes('duplicate column')) {
+    if (err && !err.message.includes('duplicate column') && !err.message.includes('already has a column')) {
       console.error('Error adding recipient_location_updated_at column:', err);
     }
   });
@@ -1507,19 +1507,24 @@ app.post('/api/blood-requests', (req, res) => {
 
         const now = Math.floor(Date.now() / 1000);
 
+    // Step 1: Insert with only the guaranteed core columns
     db.run(`
       INSERT INTO blood_requests (
         id, recipient_id, recipient_name, blood_group, units, accepted_units,
-        urgency_level, location, notes, status, share_location, 
-        recipient_latitude, recipient_longitude, recipient_location_updated_at,
+        urgency_level, location, notes, status,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?)
-    `, [id, recipientId, recipientName, bloodGroup, units, urgencyLevel, location, notes || null, 
-        shareLocation ? 1 : 0, recipientLatitude || null, recipientLongitude || null, shareLocation ? now : null, now, now], function(err) {
+      ) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, 'PENDING', ?, ?)
+    `, [id, recipientId, recipientName, bloodGroup, units, urgencyLevel, location, notes || null, now, now], function(err) {
       if (err) {
-        console.error('Error creating blood request:', err);
-        return res.status(500).json({ error: 'Failed to create request' });
+        console.error('Error creating blood request (core insert):', err);
+        return res.status(500).json({ error: 'Failed to create request', detail: err.message });
       }
+
+      // Step 2: Update optional location columns (silently ignore if columns don't exist yet)
+      db.run(`UPDATE blood_requests SET share_location = ?, recipient_latitude = ?, recipient_longitude = ?, recipient_location_updated_at = ? WHERE id = ?`,
+        [shareLocation ? 1 : 0, recipientLatitude || null, recipientLongitude || null, shareLocation ? now : null, id],
+        (locErr) => { if (locErr) console.warn('Location columns not yet migrated (safe to ignore):', locErr.message); }
+      );
 
       // Create audit log for request creation
       createAuditLog({
@@ -1917,7 +1922,7 @@ app.get('/api/blood-requests/available/:donorId', (req, res) => {
           if (!donorResult) {
             // Check if ANY donor has already accepted this request (ONE DONOR ONLY rule)
             db.get(`
-              SELECT 1 FROM accepted_donors WHERE request_id = ? AND status != 'CANCELLED'
+              SELECT 1 FROM accepted_donors ad JOIN blood_requests br ON ad.request_id = br.id WHERE ad.request_id = ? AND br.status != 'CANCELLED'
             `, [request.id], (err, anyAcceptedResult) => {
               // Only show request if no donor has accepted it yet
               if (!anyAcceptedResult) {
@@ -1980,11 +1985,12 @@ app.post('/api/blood-requests/:id/accept', (req, res) => {
       });
     }
 
-    // Check if donor already has an active donation
+    // Check if donor already has an active donation (join blood_requests for status)
     db.get(`
-      SELECT request_id, status FROM accepted_donors 
-      WHERE donor_id = ? AND status NOT IN ('CANCELLED', 'COMPLETED')
-      ORDER BY accepted_at DESC
+      SELECT ad.request_id, br.status FROM accepted_donors ad
+      JOIN blood_requests br ON ad.request_id = br.id
+      WHERE ad.donor_id = ? AND br.status NOT IN ('CANCELLED', 'COMPLETED')
+      ORDER BY ad.accepted_at DESC
       LIMIT 1
     `, [donorId], (err, activeRequest) => {
       if (err) {
@@ -2011,15 +2017,18 @@ app.post('/api/blood-requests/:id/accept', (req, res) => {
           return res.status(403).json({ error: 'Donor profile not approved' });
         }
 
-    // Insert accepted donor with current location
+    // Insert accepted donor — use only guaranteed core columns
     db.run(`
-      INSERT OR IGNORE INTO accepted_donors (request_id, donor_id, donor_name, accepted_at, donor_current_location)
-      VALUES (?, ?, ?, ?, ?)
-    `, [id, donorId, donorName, now, currentLocation || null], function(err) {
+      INSERT OR IGNORE INTO accepted_donors (request_id, donor_id, donor_name, accepted_at)
+      VALUES (?, ?, ?, ?)
+    `, [id, donorId, donorName, now], function(err) {
       if (err) {
         console.error('Error accepting request:', err);
         return res.status(500).json({ error: 'Failed to accept request' });
       }
+      // Silently set optional columns if they exist
+      db.run(`UPDATE accepted_donors SET donor_current_location = ?, status = 'ACCEPTED' WHERE request_id = ? AND donor_id = ?`,
+        [currentLocation || null, id, donorId], () => {});
 
       if (this.changes === 0) {
         return res.json({ success: true, message: 'Already accepted' });
@@ -2580,106 +2589,74 @@ app.post('/api/blood-requests/:id/cancel', (req, res) => {
 
     // For pending requests, recipient can cancel without reason
     if (request.status === 'PENDING' && role === 'recipient') {
-      db.run(`
-        UPDATE blood_requests 
-        SET status = 'CANCELLED', cancelled_by = ?, cancellation_reason = ?, updated_at = ?
-        WHERE id = ?
-      `, [userId, reason || 'Cancelled by recipient', now, id], function(err) {
+      db.run(`UPDATE blood_requests SET status = 'CANCELLED', updated_at = ? WHERE id = ?`,
+        [now, id], function(err) {
         if (err) {
           console.error('❌ [Cancel] Failed to update request:', err);
           return res.status(500).json({ success: false, error: 'Failed to cancel request' });
         }
+        // Silently try optional columns
+        db.run(`UPDATE blood_requests SET cancelled_by = ?, cancellation_reason = ? WHERE id = ?`,
+          [userId, reason || 'Cancelled by recipient', id], () => {});
 
-        // Log cancellation
         const cancellationId = `cancel_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        db.run(`
-          INSERT INTO request_cancellations (id, request_id, cancelled_by, cancelled_by_role, reason, cancelled_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `, [cancellationId, id, userId, role, reason || 'Cancelled by recipient', now]);
+        db.run(`INSERT INTO request_cancellations (id, request_id, cancelled_by, cancelled_by_role, reason, cancelled_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          [cancellationId, id, userId, role, reason || 'Cancelled by recipient', now], () => {});
 
         console.log(`✅ [Cancel] Request ${id} cancelled by recipient`);
         res.json({ success: true, message: 'Request cancelled' });
       });
     } else if (role === 'donor' && donorId) {
-      // Donor cancelling - CANCEL the entire request (NEW LOGIC)
+      // Donor cancelling - CANCEL the entire request
       console.log(`🚫 [Cancel] Donor ${donorId} cancelling - will CANCEL entire request`);
-      
-      // Update accepted_donors to CANCELLED status
-      db.run(`
-        UPDATE accepted_donors 
-        SET status = 'CANCELLED'
-        WHERE request_id = ? AND donor_id = ?
-      `, [id, donorId], function(err) {
-        if (err) {
-          console.error('❌ [Cancel] Failed to update accepted donor:', err);
-          return res.status(500).json({ success: false, error: 'Failed to cancel donation' });
-        }
 
-        console.log(`✅ [Cancel] Marked donor ${donorId} as CANCELLED for request ${id}`);
+      // Silently update accepted_donors status (column may not exist in older DBs)
+      db.run(`UPDATE accepted_donors SET status = 'CANCELLED' WHERE request_id = ? AND donor_id = ?`,
+        [id, donorId], () => {});
 
-        // Cancel the entire blood request
-        db.run(`
-          UPDATE blood_requests 
-          SET status = 'CANCELLED', 
-              cancelled_by = ?,
-              cancellation_reason = ?,
-              updated_at = ?
-          WHERE id = ?
-        `, [donorId, reason || 'Cancelled by donor', now, id], function(err) {
+      // Cancel the blood request - only use guaranteed columns
+      db.run(`UPDATE blood_requests SET status = 'CANCELLED', updated_at = ? WHERE id = ?`,
+        [now, id], function(err) {
           if (err) {
             console.error('❌ [Cancel] Failed to update request status:', err);
             return res.status(500).json({ success: false, error: 'Failed to cancel request' });
           }
+          // Silently try optional columns
+          db.run(`UPDATE blood_requests SET cancelled_by = ?, cancellation_reason = ? WHERE id = ?`,
+            [donorId, reason || 'Cancelled by donor', id], () => {});
 
-          // Log cancellation
           const cancellationId = `cancel_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          db.run(`
-            INSERT INTO request_cancellations (id, request_id, cancelled_by, cancelled_by_role, reason, cancelled_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `, [cancellationId, id, donorId, 'donor', reason || 'Cancelled by donor', now]);
+          db.run(`INSERT INTO request_cancellations (id, request_id, cancelled_by, cancelled_by_role, reason, cancelled_at) VALUES (?, ?, ?, ?, ?, ?)`,
+            [cancellationId, id, donorId, 'donor', reason || 'Cancelled by donor', now], () => {});
 
           console.log(`✅ [Cancel] Request ${id} CANCELLED by donor ${donorId}`);
           res.json({ success: true, message: 'Request cancelled' });
         });
-      });
     } else if (role === 'recipient') {
       // Recipient cancelling accepted request
       console.log(`🚫 [Cancel] Recipient cancelling ACCEPTED request`);
-      
-      // First, update all accepted_donors to CANCELLED status
-      db.run(`
-        UPDATE accepted_donors 
-        SET status = 'CANCELLED'
-        WHERE request_id = ?
-      `, [id], function(err) {
+
+      // Silently update accepted_donors status (column may not exist in older DBs)
+      db.run(`UPDATE accepted_donors SET status = 'CANCELLED' WHERE request_id = ?`, [id], () => {});
+
+      // Now cancel the blood request — only guaranteed columns first
+      db.run(`UPDATE blood_requests SET status = 'CANCELLED', updated_at = ? WHERE id = ?`,
+        [now, id], function(err) {
         if (err) {
-          console.error('❌ [Cancel] Error updating accepted_donors:', err);
+          console.error('❌ [Cancel] Error updating blood_requests:', err);
           return res.status(500).json({ success: false, error: 'Failed to cancel request' });
         }
 
-        console.log(`✅ [Cancel] Marked ${this.changes} accepted donors as CANCELLED for request ${id}`);
+        // Silently try optional columns
+        db.run(`UPDATE blood_requests SET cancelled_by = ?, cancellation_reason = ? WHERE id = ?`,
+          [userId, reason || 'Cancelled by recipient', id], () => {});
 
-        // Then update the blood request itself
-        db.run(`
-          UPDATE blood_requests 
-          SET status = 'CANCELLED', cancelled_by = ?, cancellation_reason = ?, updated_at = ?
-          WHERE id = ?
-        `, [userId, reason, now, id], function(err) {
-          if (err) {
-            console.error('❌ [Cancel] Failed to update request status:', err);
-            return res.status(500).json({ success: false, error: 'Failed to cancel request' });
-          }
+        const cancellationId = `cancel_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        db.run(`INSERT INTO request_cancellations (id, request_id, cancelled_by, cancelled_by_role, reason, cancelled_at) VALUES (?, ?, ?, ?, ?, ?)`,
+          [cancellationId, id, userId, role, reason || 'Cancelled by recipient', now], () => {});
 
-          // Log cancellation
-          const cancellationId = `cancel_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-          db.run(`
-            INSERT INTO request_cancellations (id, request_id, cancelled_by, cancelled_by_role, reason, cancelled_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `, [cancellationId, id, userId, role, reason, now]);
-
-          console.log(`✅ [Cancel] Request ${id} cancelled by recipient with reason: ${reason}`);
-          res.json({ success: true, message: 'Request cancelled' });
-        });
+        console.log(`✅ [Cancel] Request ${id} cancelled by recipient`);
+        res.json({ success: true, message: 'Request cancelled' });
       });
     } else {
       console.error('❌ [Cancel] Invalid cancellation request - role:', role, 'donorId:', donorId);
@@ -2698,9 +2675,10 @@ app.get('/api/donor-stats/:donorId', (req, res) => {
 
   db.get(`
     SELECT 
-      (SELECT COUNT(*) FROM accepted_donors 
-       WHERE donor_id = ? 
-       AND status = 'COMPLETED') as donated_count
+      (SELECT COUNT(*) FROM accepted_donors ad2
+       JOIN blood_requests br2 ON ad2.request_id = br2.id
+       WHERE ad2.donor_id = ? 
+       AND br2.status = 'COMPLETED') as donated_count
   `, [donorId], (err, stats) => {
     if (err) {
       console.error('Error fetching donor stats:', err);
@@ -4101,7 +4079,7 @@ app.get('/api/donor/:donorId/recent-donations', (req, res) => {
       br.id as request_id
     FROM accepted_donors ad
     JOIN blood_requests br ON ad.request_id = br.id
-    WHERE ad.donor_id = ? AND ad.status = 'COMPLETED'
+    WHERE ad.donor_id = ? AND br.status = 'COMPLETED'
     ORDER BY br.updated_at DESC
     LIMIT ?
   `, [donorId, limit], (err, donations) => {
