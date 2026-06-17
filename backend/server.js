@@ -1111,6 +1111,8 @@ app.get('/api/donor-profile/:userId', (req, res) => {
         name: profile.name,
         photo: profile.profile_image, // Use profile_image from donor_profiles
         mobile: profile.mobile,
+        approvalStatus: profile.approval_status, // camelCase alias for frontend
+        adminRemarks: profile.admin_remarks,      // camelCase alias for frontend
         createdAt: profile.created_at * 1000,
         updatedAt: profile.updated_at * 1000
       }
@@ -1233,6 +1235,8 @@ app.get('/api/recipient-profile/:userId', (req, res) => {
         name: profile.name,
         photo: profile.profile_image, // Use profile_image from recipient_profiles
         mobile: profile.mobile,
+        approvalStatus: profile.approval_status, // camelCase alias for frontend
+        adminRemarks: profile.admin_remarks,      // camelCase alias for frontend
         createdAt: profile.created_at * 1000,
         updatedAt: profile.updated_at * 1000
       }
