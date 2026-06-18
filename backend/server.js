@@ -25,7 +25,8 @@ const path = require('path');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Initialize SQLite database
 const dbPath = path.join(__dirname, 'bdms.db');
@@ -40,6 +41,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 // Initialize database tables
 function initializeDatabase() {
+  // db.serialize() forces all db.run/db.get/db.all calls inside this callback
+  // to execute strictly in order, one completing before the next starts.
+  // Without this, sqlite3's default parallel mode can run the later
+  // "ALTER TABLE accepted_donors/blood_requests ADD COLUMN ..." migration
+  // statements BEFORE the CREATE TABLE IF NOT EXISTS calls for those same
+  // tables have finished — which is exactly what causes
+  // "SQLITE_ERROR: no such table" on a fresh/empty database.
+  db.serialize(() => {
   // Create users table
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -546,6 +555,7 @@ function initializeDatabase() {
   db.run(`CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id)`, () => {});
   db.run(`CREATE INDEX IF NOT EXISTS idx_notif_read ON notifications(is_read)`, () => {});
   db.run(`CREATE INDEX IF NOT EXISTS idx_notif_created ON notifications(created_at DESC)`, () => {});
+  }); // end db.serialize
 }
 
 // Email configuration using Resend
@@ -2827,6 +2837,9 @@ app.get('/api/location/:requestId', (req, res) => {
     }
 
     // Also get request location sharing preference and recipient name
+    // Use a try/fallback approach: if the optional location columns don't
+    // exist yet on this database, fall back to a query without them instead
+    // of crashing the whole endpoint.
     db.get(`
       SELECT 
         br.share_location, 
@@ -2840,8 +2853,27 @@ app.get('/api/location/:requestId', (req, res) => {
       WHERE br.id = ?
     `, [requestId], (err, request) => {
       if (err) {
-        console.error('Error fetching request:', err);
-        return res.status(500).json({ error: 'Failed to fetch request' });
+        console.warn('⚠️ Optional location columns missing, falling back:', err.message);
+        // Fallback query using only guaranteed columns
+        db.get(`
+          SELECT br.recipient_id, u.name as recipient_name
+          FROM blood_requests br
+          LEFT JOIN users u ON br.recipient_id = u.id
+          WHERE br.id = ?
+        `, [requestId], (fallbackErr, fallbackRequest) => {
+          if (fallbackErr) {
+            console.error('Error fetching request (fallback):', fallbackErr);
+            return res.status(500).json({ error: 'Failed to fetch request' });
+          }
+          return res.json({
+            success: true,
+            locations: locations || [],
+            shareLocation: 0,
+            recipientName: fallbackRequest ? fallbackRequest.recipient_name : null,
+            recipientStaticLocation: null
+          });
+        });
+        return;
       }
 
       res.json({
@@ -4239,6 +4271,22 @@ app.get('/api/admin/recent-activities', (req, res) => {
       activities: formattedActivities
     });
   });
+});
+
+// Global error handler — catches body-parser (e.g. payload too large) and other middleware errors
+// so they return a clean JSON response instead of crashing with a raw stack trace
+app.use((err, req, res, next) => {
+  if (err) {
+    console.error('❌ [Global Error Handler]', err.message);
+    if (err.type === 'entity.too.large' || err.status === 413) {
+      return res.status(413).json({ error: 'Upload too large. Please use a smaller image.' });
+    }
+    if (err.type === 'entity.parse.failed') {
+      return res.status(400).json({ error: 'Invalid request format.' });
+    }
+    return res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+  }
+  next();
 });
 
 const PORT = process.env.PORT || 3000;
